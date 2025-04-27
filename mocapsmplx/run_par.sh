@@ -6,7 +6,7 @@ mkdir -p /data/logs
 GPUS=(0 1 2 3 4 5 6 7)   # List of available GPU IDs
 NUM_GPUS=${#GPUS[@]}
 # FILES=("/home/deichler/data/sgs_recordings/hsi/pos4smplx_dataset/"*.npy)
-FILES=(/data/referential*.npy) # start with referential
+FILES=(/data/*.npy) # start with referential
 
 # Split files into batches for each GPU
 declare -A GPU_FILES
