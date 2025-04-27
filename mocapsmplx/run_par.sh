@@ -1,12 +1,12 @@
 #!/bin/bash
 
-mkdir -p /home/deichler/data/sgs_recordings/hsi/smplx_npz
-mkdir -p logs
+#mkdir -p /home/deichler/data/sgs_recordings/hsi/smplx_npz
+mkdir -p /data/logs
 
 GPUS=(1 2 3 4 5 6)   # List of available GPU IDs
 NUM_GPUS=${#GPUS[@]}
 # FILES=("/home/deichler/data/sgs_recordings/hsi/pos4smplx_dataset/"*.npy)
-FILES=(/home/deichler/data/sgs_recordings/hsi/pos4smplx_dataset/referential*.npy) # start with referential
+FILES=(/data/referential*.npy) # start with referential
 
 # Split files into batches for each GPU
 declare -A GPU_FILES
@@ -29,8 +29,8 @@ for gpu_id in "${GPUS[@]}"; do
       echo "Starting $base_name on GPU $gpu_id..."
       CUDA_VISIBLE_DEVICES=$gpu_id python main.py --npy "$npy_file" \
         --shape_pkl ./test_data/P2.pkl \
-        --save_path "/home/deichler/data/sgs_recordings/hsi/smplx_npz/${base_name}_smplx.npz" \
-        > "logs/${base_name}.log" 2>&1 &
+        --save_path "/data/smplx_npz/${base_name}_smplx.npz" \
+        > "/data/logs/${base_name}.log" 2>&1 &
       
       ((count++))
       
