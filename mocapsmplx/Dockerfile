@@ -13,3 +13,4 @@ WORKDIR /workspace/Mocap-to-SMPLX
 RUN pip install -r requirements.txt
 
 COPY run_par.sh .
+COPY body_models ./body_models
