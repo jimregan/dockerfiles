@@ -24,7 +24,7 @@ from lego.model.builder import CONFIG, load_pretrained_model
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Paths
-model_path = "./ckpt"
+model_path = "/ckpt/GroundingGPT"
 # JUST TAKE FIRST FRAME IN EACH _0 
 # object_json_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/json_objectID/0000_seg.json"
 # mask_img_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/img_objectID/0000.png"
