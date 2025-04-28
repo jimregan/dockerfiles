@@ -197,7 +197,7 @@ def main():
             if speaker not in ref_pairs:
                 raise ValueError(f"No reference audio/text found for speaker {speaker}")
 
-            available_refs = list(ref_pairs[speaker][room].items())
+            available_refs = list(ref_pairs[speaker].items())
             ref_audio_file, ref_text = random.choice(available_refs)
 
             ref_audio_proc, ref_text_proc = preprocess_ref_audio_text(ref_audio_file, ref_text)
