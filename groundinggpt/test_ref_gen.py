@@ -26,159 +26,170 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # Paths
 model_path = "./ckpt"
 # JUST TAKE FIRST FRAME IN EACH _0 
-object_json_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/json_objectID/0000_seg.json"
-mask_img_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/img_objectID/0000.png"
-color_img_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/img_color/0000.png"
+# object_json_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/json_objectID/0000_seg.json"
+# mask_img_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/img_objectID/0000.png"
+# color_img_path = "/shared/mm_conv/screenshots_1.6/hsi_7_0719_227_003_main_0/img_color/0000.png"
 
 temperature = 0.2
 max_new_tokens = 512
+
+BASE_DIR = Path("/data/shared/mm_conv/screenshots_1.6/")
 
 # ============ STEP 1: Load Model ============
 
 print("🔵 Loading model...")
 model, tokenizer, image_processor, _, _ = load_pretrained_model(model_path)
 
-# ============ STEP 2: Load object segmentation (color -> object map) ============
+    # ============ STEP 2: Load object segmentation (color -> object map) ============
 
-print("🔵 Loading object masks...")
-with open(object_json_path, 'r') as f:
-    object_data = json.load(f)
+for subdir in BASE_DIR.glob("*_0"):
+    object_json_path = subdir / "json_objectID" / "0000_seg.json"
+    mask_img_path = subdir / "img_objectID" / "0000.png"
+    color_img_path = subdir / "img_color" / "0000.png"
 
-# Build color -> object dictionary
-color_to_object = {}
-for obj in object_data['objects']:
-    r = int(round(obj['color'][0] * 255))
-    g = int(round(obj['color'][1] * 255))
-    b = int(round(obj['color'][2] * 255))
-    color_to_object[(r, g, b)] = {
-        "id": obj['id'],
-        "name": obj['name']
-    }
+    print("🔵 Loading object masks...")
+    with open(object_json_path, 'r') as f:
+        object_data = json.load(f)
 
-mask_img = Image.open(mask_img_path).convert('RGB')
-mask_np = np.array(mask_img)
+    # Build color -> object dictionary
+    color_to_object = {}
+    for obj in object_data['objects']:
+        r = int(round(obj['color'][0] * 255))
+        g = int(round(obj['color'][1] * 255))
+        b = int(round(obj['color'][2] * 255))
+        color_to_object[(r, g, b)] = {
+            "id": obj['id'],
+            "name": obj['name']
+        }
 
-# ============ STEP 3: Find bounding boxes for each object ============
+    mask_img = Image.open(mask_img_path).convert('RGB')
+    mask_np = np.array(mask_img)
 
-object_boxes = []
+    # ============ STEP 3: Find bounding boxes for each object ============
 
-unique_colors = np.unique(mask_np.reshape(-1, 3), axis=0)
-for color in unique_colors:
-    color_tuple = tuple(color)
-    if color_tuple not in color_to_object:
-        continue
+    object_boxes = []
 
-    mask = np.all(mask_np == color_tuple, axis=-1)
-    indices = np.argwhere(mask)
-    if indices.size == 0:
-        continue
+    unique_colors = np.unique(mask_np.reshape(-1, 3), axis=0)
+    for color in unique_colors:
+        color_tuple = tuple(color)
+        if color_tuple not in color_to_object:
+            continue
 
-    y_min, x_min = indices.min(axis=0)
-    y_max, x_max = indices.max(axis=0)
+        mask = np.all(mask_np == color_tuple, axis=-1)
+        indices = np.argwhere(mask)
+        if indices.size == 0:
+            continue
 
-    obj_info = color_to_object[color_tuple]
+        y_min, x_min = indices.min(axis=0)
+        y_max, x_max = indices.max(axis=0)
 
-    object_boxes.append({
-        "bbox": [x_min, y_min, x_max, y_max],  # pixel coordinates
-        "name": obj_info['name'],
-        "id": obj_info['id']
-    })
+        obj_info = color_to_object[color_tuple]
 
-print(f"🟢 Found {len(object_boxes)} objects!")
+        object_boxes.append({
+            "bbox": [x_min, y_min, x_max, y_max],  # pixel coordinates
+            "name": obj_info['name'],
+            "id": obj_info['id']
+        })
 
-# ============ STEP 4: Randomly pick an object ============
+    print(f"🟢 Found {len(object_boxes)} objects!")
 
-chosen_obj = random.choice(object_boxes)
-print(f"🎯 Randomly selected object: {chosen_obj['name']} (ID {chosen_obj['id']})")
-bbox = chosen_obj['bbox']
+    # ============ STEP 4: Randomly pick an object ============
 
-# ============ STEP 5: Prepare prompt ============
+    chosen_obj = random.choice(object_boxes)
+    print(f"🎯 Randomly selected object: {chosen_obj['name']} (ID {chosen_obj['id']})")
+    bbox = chosen_obj['bbox']
 
-color_img = Image.open(color_img_path).convert("RGB")
-width, height = color_img.size
+    # ============ STEP 5: Prepare prompt ============
 
-# Normalize bbox (0-1 scale)
-bbox_normalized = [
-    bbox[0] / width,
-    bbox[1] / height,
-    bbox[2] / width,
-    bbox[3] / height
-]
+    color_img = Image.open(color_img_path).convert("RGB")
+    width, height = color_img.size
 
-# You can also crop image to the bbox if you want a tight input:
-# cropped_img = color_img.crop(bbox)
+    # Normalize bbox (0-1 scale)
+    bbox_normalized = [
+        bbox[0] / width,
+        bbox[1] / height,
+        bbox[2] / width,
+        bbox[3] / height
+    ]
 
-# Prepare input for model
-print("🔵 Preparing input...")
-image = load_image_square(color_img_path, image_processor)
-image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'].half().cuda()
+    # You can also crop image to the bbox if you want a tight input:
+    # cropped_img = color_img.crop(bbox)
 
-phrase = chosen_obj['name']
-# inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
-inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
-conv = conversation_lib.default_conversation.copy()
-roles = conv.roles
+    # Prepare input for model
+    print("🔵 Preparing input...")
+    image = load_image_square(color_img_path, image_processor)
+    image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'].half().cuda()
 
-if model.config.mm_use_im_start_end:
-    inp = DEFAULT_IMAGE_START_TOKEN + DEFAULT_IMAGE_PATCH_TOKEN * CONFIG.image_token_len + DEFAULT_IMAGE_END_TOKEN + '\n' + inp
-else:
-    inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
+    phrase = chosen_obj['name']
+    utterance = f"Find the object '{phrase}' in the image."
+    inp = f"Given the following bbox: {bbox} Generate referring epxrsesion describing object."
 
-conv.append_message(roles[0], inp)
-conv.append_message(roles[1], None)
-prompt = conv.get_prompt()
+    conv = conversation_lib.default_conversation.copy()
+    roles = conv.roles
 
-input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).cuda()
+    if model.config.mm_use_im_start_end:
+        inp = DEFAULT_IMAGE_START_TOKEN + DEFAULT_IMAGE_PATCH_TOKEN * CONFIG.image_token_len + DEFAULT_IMAGE_END_TOKEN + '\n' + inp
+    else:
+        inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
 
-stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
-stopping_criteria = KeywordsStoppingCriteria([stop_str], tokenizer, input_ids)
+    conv.append_message(roles[0], inp)
+    conv.append_message(roles[1], None)
+    prompt = conv.get_prompt()
 
-# ============ STEP 6: Inference ============
+    input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt').unsqueeze(0).cuda()
 
-print("🔵 Running inference...")
-with torch.inference_mode():
-    output_ids = model.generate(
-        input_ids,
-        images=image_tensor,
-        do_sample=True,
-        temperature=temperature,
-        max_new_tokens=max_new_tokens,
-        use_cache=True,
-        stopping_criteria=[stopping_criteria]
-    )
+    stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
+    stopping_criteria = KeywordsStoppingCriteria([stop_str], tokenizer, input_ids)
 
-outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
-outputs = postprocess_output(outputs, color_img_path)
+    # ============ STEP 6: Inference ============
 
-if outputs.endswith(stop_str):
-    outputs = outputs[:-len(stop_str)]
+    print("🔵 Running inference...")
+    with torch.inference_mode():
+        output_ids = model.generate(
+            input_ids,
+            images=image_tensor,
+            do_sample=True,
+            temperature=temperature,
+            max_new_tokens=max_new_tokens,
+            use_cache=True,
+            stopping_criteria=[stopping_criteria]
+        )
 
-print(f"📝 Model Output: {outputs}")
+    outputs = tokenizer.decode(output_ids[0, input_ids.shape[1]:]).strip()
+    outputs = postprocess_output(outputs, color_img_path)
 
-# ============ STEP 7: Save visualization ============
+    if outputs.endswith(stop_str):
+        outputs = outputs[:-len(stop_str)]
 
-output_dir = "./viz_random_object"
-os.makedirs(output_dir, exist_ok=True)
+    print(f"📝 Model Output: {outputs}")
 
-draw = ImageDraw.Draw(color_img)
+    # ============ STEP 7: Save visualization ============
 
-# Draw model prediction box
-generated_text = ast.literal_eval(outputs)
-# try:
-#     model_bbox = np.array(ast.literal_eval(outputs))
-#     x1, y1, x2, y2 = model_bbox
-#     x1 *= width
-#     y1 *= height
-#     x2 *= width
-#     y2 *= height
-#     draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
-# except:
-#     print("❗ Could not parse model output")
+    output_dir = str(subdir / "viz_random_object")
+    os.makedirs(output_dir, exist_ok=True)
 
-# Draw GT box
-draw.rectangle(bbox, outline="yellow", width=3)
+    draw = ImageDraw.Draw(color_img)
+    phrase = chosen_obj['name']
+    # inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
+    inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
 
-# Save
-out_path = os.path.join(output_dir, f"result.png")
-color_img.save(out_path)
-print(f"✅ Saved visualization to {out_path}")
+    generated_text = ast.literal_eval(outputs)
+    # Draw model prediction box
+    # try:
+    #     model_bbox = np.array(ast.literal_eval(outputs))
+    #     x1, y1, x2, y2 = model_bbox
+    #     x1 *= width
+    #     y1 *= height
+    #     x2 *= width
+    #     y2 *= height
+    #     draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
+    # except:
+    #     print("❗ Could not parse model output")
+
+    # Draw GT box
+    draw.rectangle(bbox, outline="yellow", width=3)
+
+    # Save
+    out_path = output_dir / "result.png"
+    color_img.save(out_path)
+    print(f"✅ Saved visualization to {out_path}")
