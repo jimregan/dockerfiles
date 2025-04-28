@@ -121,8 +121,11 @@ for subdir in BASE_DIR.glob("*_0"):
     image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'].half().cuda()
 
     phrase = chosen_obj['name']
+    preamble = """
+Demonstratives in exophoric reference are used to indicate concrete physical entities in space. For example, I was thinking sitting down. See that bench there, we could sit there. Here 'that' would be the demonstrative. I want you to generate examples like the following, which connect to a story. The rules are that each generated sentence should contain one exophoric reference. examples: " See that bench over THERE, we could sit there" "Look in the middle of the room, THAT small dog is my new best friend." "We could get there faster. See THAT bike over there, We could take that one". "Look at the top shelf. THAT is the vase I wanted to buy"
+"""
     # inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
-    inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
+    inp = f"{preamble}Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
     conv = conversation_lib.default_conversation.copy()
     roles = conv.roles
 
