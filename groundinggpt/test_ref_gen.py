@@ -91,6 +91,9 @@ print(f"🟢 Found {len(object_boxes)} objects!")
 chosen_obj = random.choice(object_boxes)
 print(f"🎯 Randomly selected object: {chosen_obj['name']} (ID {chosen_obj['id']})")
 bbox = chosen_obj['bbox']
+name = chosen_obj['name']
+
+# STOP HERE FOR GPT
 
 # ============ STEP 5: Prepare prompt ============
 
@@ -115,11 +118,11 @@ image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_val
 
 phrase = chosen_obj['name']
 # inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
-inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
+inp = f" Write a casual, natural-sounding sentence that mentions the object using either 'this' or 'that'? For example (object is table): 'And I haven't told you, but that table over there? I inherited it from my mother.' for given bounding box: {bbox}, and correspoinding object label '{chosen_obj['name']}"
 conv = conversation_lib.default_conversation.copy()
 roles = conv.roles
 
-if model.config.mm_use_im_start_end:
+if model.config.mm_use_im_start_end:    
     inp = DEFAULT_IMAGE_START_TOKEN + DEFAULT_IMAGE_PATCH_TOKEN * CONFIG.image_token_len + DEFAULT_IMAGE_END_TOKEN + '\n' + inp
 else:
     inp = DEFAULT_IMAGE_TOKEN + '\n' + inp
