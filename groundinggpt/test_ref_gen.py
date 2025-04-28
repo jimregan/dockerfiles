@@ -40,7 +40,7 @@ BASE_DIR = Path("/data/shared/mm_conv/screenshots_1.6/")
 print("🔵 Loading model...")
 model, tokenizer, image_processor, _, _ = load_pretrained_model(model_path)
 
-    # ============ STEP 2: Load object segmentation (color -> object map) ============
+# ============ STEP 2: Load object segmentation (color -> object map) ============
 
 for subdir in BASE_DIR.glob("*_0"):
     object_json_path = subdir / "json_objectID" / "0000_seg.json"
@@ -169,9 +169,6 @@ for subdir in BASE_DIR.glob("*_0"):
     os.makedirs(output_dir, exist_ok=True)
 
     draw = ImageDraw.Draw(color_img)
-    phrase = chosen_obj['name']
-    # inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
-    inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
 
     # Draw model prediction box
     generated_text = ast.literal_eval(outputs)
