@@ -114,9 +114,8 @@ image = load_image_square(color_img_path, image_processor)
 image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'].half().cuda()
 
 phrase = chosen_obj['name']
-utterance = f"Find the object '{phrase}' in the image."
-inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
-
+# inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
+inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
 conv = conversation_lib.default_conversation.copy()
 roles = conv.roles
 
@@ -164,16 +163,17 @@ os.makedirs(output_dir, exist_ok=True)
 draw = ImageDraw.Draw(color_img)
 
 # Draw model prediction box
-try:
-    model_bbox = np.array(ast.literal_eval(outputs))
-    x1, y1, x2, y2 = model_bbox
-    x1 *= width
-    y1 *= height
-    x2 *= width
-    y2 *= height
-    draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
-except:
-    print("❗ Could not parse model output")
+generated_text = ast.literal_eval(outputs)
+# try:
+#     model_bbox = np.array(ast.literal_eval(outputs))
+#     x1, y1, x2, y2 = model_bbox
+#     x1 *= width
+#     y1 *= height
+#     x2 *= width
+#     y2 *= height
+#     draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
+# except:
+#     print("❗ Could not parse model output")
 
 # Draw GT box
 draw.rectangle(bbox, outline="yellow", width=3)
