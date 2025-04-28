@@ -160,7 +160,7 @@ for subdir in BASE_DIR.glob("*_0"):
 
     # ============ STEP 7: Save visualization ============
 
-    output_dir = "./viz_random_object"
+    output_dir = subdir / "viz_random_object"
     os.makedirs(output_dir, exist_ok=True)
 
     draw = ImageDraw.Draw(color_img)
@@ -182,6 +182,6 @@ for subdir in BASE_DIR.glob("*_0"):
     draw.rectangle(bbox, outline="yellow", width=3)
 
     # Save
-    out_path = os.path.join(output_dir, f"result.png")
+    out_path = str(output_dir / "result.png")
     color_img.save(out_path)
     print(f"✅ Saved visualization to {out_path}")
