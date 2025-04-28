@@ -121,9 +121,8 @@ for subdir in BASE_DIR.glob("*_0"):
     image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values'].half().cuda()
 
     phrase = chosen_obj['name']
-    utterance = f"Find the object '{phrase}' in the image."
-    inp = f"Given the following bbox: {bbox} Generate referring epxrsesion describing object."
-
+    # inp = f"Given the following bbox: {bbox} marking the object {chosen_obj['name']} Geneate sentence incorporating a demonstrative  from [This, That] and the object {chosen_obj['name']}  'And I have not told you, but that table I have inherited from my mother.' "
+    inp = f"Here's a bounding box: {bbox}, which highlights the object '{chosen_obj['name']}'. Can you write a casual, natural-sounding sentence that mentions '{chosen_obj['name']}' using either 'this' or 'that'? For example, something like: 'And I haven't told you, but that table over there? I inherited it from my mother.'"
     conv = conversation_lib.default_conversation.copy()
     roles = conv.roles
 
