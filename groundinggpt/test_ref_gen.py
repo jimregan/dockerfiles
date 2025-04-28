@@ -43,6 +43,10 @@ model, tokenizer, image_processor, _, _ = load_pretrained_model(model_path)
 # ============ STEP 2: Load object segmentation (color -> object map) ============
 
 for subdir in BASE_DIR.glob("*_0"):
+    object_json_path = subdir / "json_objectID" / "0000_seg.json"
+    mask_img_path = subdir / "img_objectID" / "0000.png"
+    color_img_path = subdir / "img_color" / "0000.png"
+
     print("🔵 Loading object masks...")
     with open(object_json_path, 'r') as f:
         object_data = json.load(f)
