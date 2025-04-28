@@ -170,7 +170,15 @@ for subdir in BASE_DIR.glob("*_0"):
     draw = ImageDraw.Draw(color_img)
 
     # Draw model prediction box
-    generated_text = ast.literal_eval(outputs)
+    try:
+        generated_text = ast.literal_eval(outputs)
+        with open(str(output_dir / "model_output.json"), "w") as f:
+            json.dump(generated_text, f, indent=2)
+    except SyntaxError:
+        print("❗ Could not parse model output")
+        generated_text = outputs
+        with open(str(output_dir / "model_output.txt"), "w") as f:
+            f.write(generated_text)
     # try:
     #     model_bbox = np.array(ast.literal_eval(outputs))
     #     x1, y1, x2, y2 = model_bbox
