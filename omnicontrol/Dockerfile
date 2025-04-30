@@ -10,8 +10,14 @@ WORKDIR /workspace/OmniControl
 RUN conda env update --file environment.yml
 
 RUN pip install git+https://github.com/openai/CLIP.git
-RUN pip install gdown spacy
-RUN python -m spacy download en_core_web_sm
+
+
+# Set env vars to use it as default
+ENV CONDA_ENV_NAME=omnicontrol
+ENV PATH /opt/conda/envs/${CONDA_ENV_NAME}/bin:$PATH
+RUN echo "source activate ${CONDA_ENV_NAME}" >> ~/.bashrc
+
+RUN conda run -n omnicontrol python -m spacy download en_core_web_sm
 
 RUN bash prepare/download_smpl_files.sh
 RUN bash prepare/download_glove.sh
