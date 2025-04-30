@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y git ffmpeg
 RUN git clone https://github.com/neu-vi/OmniControl/
 WORKDIR /workspace/OmniControl
-RUN pip install -e .
+RUN conda env update --file environment.yml
 
 RUN pip install git+https://github.com/openai/CLIP.git
 RUN pip install gdown spacy
