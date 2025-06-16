@@ -70,22 +70,33 @@ def recover_from_ric(data, joints_num):
 
 # %%
 hm_path = "/data/st_hml3d_format"
+
+todo = []
+with open("/data/assignment_short.csv") as tsvf:
+    for line in tsvf.readlines():
+        if line.startswith("syntitem"):
+            continue
+        line = line.strip()
+        parts = line.split(",")
+        todo.append(parts[1])
+
 hpath = os.listdir(hm_path)[0]
 
-data = np.load(os.path.join(hm_path,hpath), allow_pickle=True)
+for hpath in todo:
+    data = np.load(os.path.join(hm_path,f'{hpath}_smplx_fixed.npy'), allow_pickle=True)
 
 # %%
 
-n_joints = 22 if data.shape[-1] == 263 else 21
+    n_joints = 22 if data.shape[-1] == 263 else 21
 
 
-sample = torch.from_numpy(data).float()
-sample = recover_from_ric(sample, n_joints)
+    sample = torch.from_numpy(data).float()
+    sample = recover_from_ric(sample, n_joints)
 
 
-skeleton = [[0, 2, 5, 8, 11], [0, 1, 4, 7, 10], [0, 3, 6, 9, 12, 15], [9, 14, 17, 19, 21], [9, 13, 16, 18, 20]]
+    skeleton = [[0, 2, 5, 8, 11], [0, 1, 4, 7, 10], [0, 3, 6, 9, 12, 15], [9, 14, 17, 19, 21], [9, 13, 16, 18, 20]]
 
-plot_3d_motion('./test.mp4', skeleton,sample.cpu().numpy() , dataset="humanml", title="caption", fps=20)
+    plot_3d_motion(f'/data/output/{hpath}.mp4', skeleton,sample.cpu().numpy() , dataset="humanml", title="", fps=20)
 
 
 
