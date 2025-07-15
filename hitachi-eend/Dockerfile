@@ -22,7 +22,14 @@ RUN cp tools/env.sh.in tools/env.sh && \
   echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> tools/env.sh
 RUN ln -sd /opt/kaldi tools/kaldi
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt install -y flac gridengine-client
+RUN apt install -y flac
+
+RUN echo 'export train_cmd="run.pl"' >> egs/mini_librispeech/v1/cmd.sh
+RUN echo 'export infer_cmd="run.pl"' >> egs/mini_librispeech/v1/cmd.sh
+RUN echo 'export simu_cmd="run.pl"' >> egs/mini_librispeech/v1/cmd.sh
+RUN echo 'export train_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
+RUN echo 'export infer_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
+RUN echo 'export simu_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
 
 # Default shell
 CMD ["bash"]
