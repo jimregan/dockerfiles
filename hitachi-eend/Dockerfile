@@ -30,6 +30,7 @@ RUN echo 'export simu_cmd="run.pl"' >> egs/mini_librispeech/v1/cmd.sh
 RUN echo 'export train_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
 RUN echo 'export infer_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
 RUN echo 'export simu_cmd="run.pl"' >> egs/callhome/v1/cmd.sh
+RUN pip install librosa==0.8.1
 
 # Default shell
 CMD ["bash"]
