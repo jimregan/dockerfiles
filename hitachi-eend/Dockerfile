@@ -16,6 +16,13 @@ RUN wget https://github.com/cupy/cupy/releases/download/v6.2.0/cupy_cuda100-6.2.
 ENV PATH=$CONDA_DIR/envs/eend/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ENV KALDI=/opt/kaldi
+ENV CUDA_PATH=/usr/local/cuda-10.0
+
+RUN cp tools/env.sh.in tools/env.sh && \
+  echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> tools/env.sh
+RUN ln -sd /opt/kaldi tools/kaldi
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt install -y flac gridengine-client
 
 # Default shell
 CMD ["bash"]
