@@ -115,15 +115,45 @@ if [ $stage -le 7 ] && $decode; then
     exp/tri4a/graph_4g data/test exp/tri4a/decode_test || exit 1
 fi
 
-# Neural Network (optional)
+# TDNN (Vosk-style)
 if [ $stage -le 8 ] && $train; then
-  echo "Stage 8: Training neural network (CPU)..."
-  local/sprak_run_nnet_cpu.sh 4g test || exit 1
+  echo "Stage 8: Training TDNN using chain model (Vosk-style)..."
+  local/chain/run_tdnn.sh --train-set train --gmm tri4a || exit 1
 fi
 
-# Results summary
-if [ $stage -le 9 ]; then
-  echo "Stage 9: Summary of WERs..."
+# Decode
+if [ $stage -le 9 ] && $decode; then
+  echo "Stage 9: Decoding with TDNN..."
+
+  # Format LM and build decoding graph if needed
+  utils/format_lm.sh data/lang data/local/train4_lm/lm_tgsmall.arpa.gz \
+    data/local/dict/lexicon.txt data/lang_test_4g || exit 1
+
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test_4g \
+    exp/chain/tdnn exp/chain/tdnn/graph || exit 1
+
+  # Extract MFCCs for test again if needed
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/test exp/make_mfcc/test $mfccdir
+  steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $mfccdir
+
+  # Extract ivectors for test
+  steps/online/nnet2/extract_ivectors_online.sh --nj 10 \
+    data/test exp/chain/extractor exp/chain/ivectors_test || exit 1
+
+  # Decode
+  steps/nnet3/decode.sh --cmd "$decode_cmd" --nj 10 \
+    --online-ivector-dir exp/chain/ivectors_test \
+    exp/chain/tdnn/graph data/test exp/chain/tdnn/decode_test || exit 1
+
+  # Rescore
+  utils/build_const_arpa_lm.sh data/local/train4_lm/lm_tgmed.arpa.gz data/lang data/lang_test_rescore
+  steps/lmrescore_const_arpa.sh data/lang_test_4g data/lang_test_rescore \
+    data/test exp/chain/tdnn/decode_test exp/chain/tdnn/decode_test_rescore
+fi
+
+# WER summary
+if [ $stage -le 10 ]; then
+  echo "Stage 10: Summary of WERs..."
   for x in exp/*/decode*; do
     [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh
   done
