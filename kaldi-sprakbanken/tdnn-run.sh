@@ -31,7 +31,7 @@ if [ $stage -le 1 ]; then
 
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1
 
-  local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 4 "4g" data/lang data/local/train4_lm || exit 1
+  local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log || exit 1
 fi
 
 # Feature extraction
