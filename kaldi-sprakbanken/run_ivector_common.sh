@@ -10,7 +10,7 @@ set -euo pipefail
 
 stage=0
 train_set=train
-gmm=tri3
+gmm=tri4a
 suffix=""
 
 . ./cmd.sh

@@ -7,7 +7,7 @@ set -euo pipefail
 stage=-1
 decode_nj=10
 train_set=train
-gmm=tri3
+gmm=tri4a
 nnet3_affix=
 suffix=
 
