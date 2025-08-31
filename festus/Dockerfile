@@ -7,4 +7,4 @@ RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gp
 RUN apt-get update && apt-get install -y bazel-7.6.0
 RUN git clone https://github.com/jimregan/language-resources
 WORKDIR /language-resources
-RUN bazel-7.6.0 build --enable_workspace //festus:all
+RUN bazel-7.6.0 build --enable_workspace --cxxopt='-std=c++17' --host_cxxopt='-std=c++17' //festus:all
