@@ -4,8 +4,7 @@ FROM ubuntu:24.04 AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential automake pkg-config wget ca-certificates \
-    libxml2-dev libpng-dev \
-    libsdl12-compat-dev \
+    libxml2-dev libpng-dev libsdl1.2-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # Build JOYCE
@@ -22,7 +21,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 # Runtime libs only (SDL 1.2 compat + XML + PNG + X11 client libs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsdl12-compat libxml2 libpng16-16 \
+    libsdl1.2-compat libxml2 libpng16-16 \
     libx11-6 libxext6 libxrender1 libxrandr2 libxcursor1 libxinerama1 \
     # optional: for quick testing, include x11-apps (xclock, xeyes)
     x11-apps \
@@ -32,5 +31,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /usr/local/ /usr/local/
 
 # Default entrypoint can be JOYCE; override at `docker run` if needed
-ENTRYPOINT ["xjoyce"]
 
