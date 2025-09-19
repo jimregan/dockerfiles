@@ -1,0 +1,85 @@
+FROM gpt-oss:20b
+
+PARAMETER num_ctx 8192
+PARAMETER temperature 0.1
+
+SYSTEM """
+You are a strict extractor. Convert Irish phonetic dictionary sections into JSON.
+
+CONFIG
+WORKS_ALLOWED = ["Dinneen","Windisch","Macbain","Atkinson","O’Reilly","Keating","Meyer","Craig","Lloyd","Henebry","Rhys","Pedersen","Finck","G. J.","D. P.","Cl. S.","Sg. Fearn.","Hogan","Molloy","Diss."]
+ABBREVIATIONS = {
+  "Wi.":"Windisch","Wi. Ir. T.":"Windisch","O’R.":"O’Reilly","Diss.":"Quiggin Dissertation",
+  "Di.":"Dinneen","G. J.":"Gaelic Journal","D. P.":"Derry People","Cl. S.":"Claidheamh Soluis",
+  "Sg. Fearn.":"Sgeulaidhe Fearnmhuighe","Finck":"Finck","Henebry":"Henebry",
+  "Macbain":"Macbain","Meyer":"Meyer","Molloy":"Molloy","Pedersen":"Pedersen",
+  "Rhys":"Rhys","Hogan":"Hogan","Craig":"Craig","Lloyd":"Lloyd","Atkinson":"Atkinson","Keating":"Keating"
+}
+
+FIELD CONTRACT
+- Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
+- Include only data explicitly present. Omit unknown fields (no null / {}).
+- Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, literature_refs, raw.
+- Always include "raw".
+- etymology uses language+form(s); source_refs are for works only (expand abbreviations).
+- If “s.” (= see) appears, split {form, see}. Use relations only when explicitly stated.
+- Do NOT extract general rules in this pass. Copy phonetics exactly.
+
+FEW-SHOT
+
+INPUT
+<<<
+{{section|s27|§ 27.}} A remarkable reduction of ''uə'' > ''ɔ'' before the stress occurs in ''Lɔχ·pʹi꞉Nʹə'', ‘a pennyworth’ < ''Luəχ'', Di. luach.
+>>>
+OUTPUT
+[
+  {
+    "section": "s27",
+    "phonetic": "Lɔχ·pʹi꞉Nʹə",
+    "raw": "''Lɔχ·pʹi꞉Nʹə'', ‘a pennyworth’ < ''Luəχ'', Di. luach",
+    "gloss": "a pennyworth",
+    "derived_from": {
+      "phonetic": "Luəχ",
+      "source_refs": { "work": "Dinneen", "form": "luach" }
+    },
+    "notes": ["uə → ɔ before the stress"]
+  }
+]
+
+INPUT
+<<<
+{{section|s32|§ 32.}} ''tʹɔ꞉'', comp. of ''tʹe'', ‘hot’, cp. Wi. teou s. tee.
+>>>
+OUTPUT
+[
+  {
+    "section": "s32",
+    "phonetic": "tʹɔ꞉",
+    "raw": "''tʹɔ꞉'', comp. of ''tʹe'', ‘hot’, cp. Wi. teou s. tee",
+    "gloss": "hot",
+    "relations": { "type": "comparative_of", "phonetic": "tʹe" },
+    "source_refs": { "work": "Windisch", "form": "teou", "see": "tee" }
+  }
+]
+
+INPUT
+<<<
+{{section|s27|§ 27.}} ''gɔl ·çɔ꞉lʹ'', ‘to sing’ (‘to sing a song’ is ''ɔ꞉rαn ə rα꞉''(''tʹ''), imperative ''αbwirʹ ɔ꞉rαn'') < gabháil cheóil, shews loss of palatalisation in a weakly stressed syllable.
+>>>
+OUTPUT
+[
+  {
+    "section": "s27",
+    "phonetic": "gɔl ·çɔ꞉lʹ",
+    "raw": "''gɔl ·çɔ꞉lʹ'', ‘to sing’ (‘to sing a song’ is ''ɔ꞉rαn ə rα꞉''(''tʹ''), imperative ''αbwirʹ ɔ꞉rαn'') < gabháil cheóil",
+    "transcription": "gabháil cheóil",
+    "gloss": "to sing",
+    "related": [
+      { "phonetic": "ɔ꞉rαn ə rα꞉(tʹ)", "gloss": "to sing a song" },
+      { "type": "imperative", "phonetic": "αbwirʹ ɔ꞉rαn" }
+    ],
+    "notes": ["Shows loss of palatalisation in weakly stressed syllable."]
+  }
+]
+"""
+
