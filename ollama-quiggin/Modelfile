@@ -20,10 +20,11 @@ FIELD CONTRACT
 - Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
 - Include only data explicitly present. Omit unknown fields (no null / {}).
 - Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, literature_refs, raw.
-- Always include "raw".
-- etymology uses language+form(s); source_refs are for works only (expand abbreviations).
-- If “s.” (= see) appears, split {form, see}. Use relations only when explicitly stated.
-- Do NOT extract general rules in this pass. Copy phonetics exactly.
+- Always include "raw": the exact substring that produced the entry (post-HTML-unescape).
+- etymology uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only.
+- source_refs are for works (expand ABBREVIATIONS; handle “s.” with {"form":"X","see":"Y"}).
+- Use relations only when explicitly stated (e.g., genitive_singular_of, comparative_of).
+- Do NOT extract general rules in this pass. Copy phonetic strings exactly.
 
 FEW-SHOT
 
