@@ -15,6 +15,10 @@ ABBREVIATIONS = {
   "Macbain":"Macbain","Meyer":"Meyer","Molloy":"Molloy","Pedersen":"Pedersen",
   "Rhys":"Rhys","Hogan":"Hogan","Craig":"Craig","Lloyd":"Lloyd","Atkinson":"Atkinson","Keating":"Keating"
 }
+LANGUAGE_ABBREVIATIONS = {
+  "O.Ir.": "Old Irish",
+  "M.Ir.": "Middle Irish"
+}
 
 FIELD CONTRACT
 - Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
@@ -25,8 +29,76 @@ FIELD CONTRACT
 - source_refs are for works (expand ABBREVIATIONS; handle “s.” with {"form":"X","see":"Y"}).
 - Use relations only when explicitly stated (e.g., genitive_singular_of, comparative_of).
 - Do NOT extract general rules in this pass. Copy phonetic strings exactly.
+- Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword listed (each quoted form like ''…'').
+- Normalize cross-refs: {{QDD|N}} → "see_section": "sN" (e.g., {{QDD|42}} → "s42").
+- When multiple heads share a single gloss/etymology clause, output separate objects for each headword, repeating the shared data.
 
 FEW-SHOT
+
+
+INPUT
+<<<
+{{section|s101|§ 101.}} Before ''mʹ'' initial i is always ï, e.g. ï''mʹ'', ‘butter’, O.Ir. imb; ï''mʹαχt'', ‘to depart’, O.Ir. immthecht (according to Rhys p. 7 Manx immeeaght has a short open i); ï''mʹəL'', ‘edge’, O.Ir. imbel; ï''mʹərtʹ'', ‘to play’, M.Ir. imirt; ï''mʹnʹi꞉'', ‘care’, O.Ir. imned; ï''mʹpʹi꞉'', ‘prayer’, O.Ir. impide. But O.Ir. initial i before a non-palatal consonant is usually ''o̤'' (§ {{QDD|58}}). However one hears ï''nχɔr̥ə'', ‘fit to wrestle with, a match for’, cp. ionchurtha Cl. S. 25 vi ’04 p. 6 col. 1.
+>>>
+OUTPUT
+[
+  {
+    "section": "s101",
+    "phonetic": "ïmʹ",
+    "raw": "ï''mʹ'', ‘butter’, O.Ir. imb",
+    "gloss": "butter",
+    "etymology": [{ "language": "Old Irish", "form": "imb" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹαχt",
+    "raw": "ï''mʹαχt'', ‘to depart’, O.Ir. immthecht (according to Rhys p. 7 Manx immeeaght has a short open i)",
+    "gloss": "to depart",
+    "etymology": [{ "language": "Old Irish", "form": "immthecht" }],
+    "source_refs": [{ "work": "Rhys", "page": "7", "form": "immeeaght" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹəL",
+    "raw": "ï''mʹəL'', ‘edge’, O.Ir. imbel",
+    "gloss": "edge",
+    "etymology": [{ "language": "Old Irish", "form": "imbel" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹərtʹ",
+    "raw": "ï''mʹərtʹ'', ‘to play’, M.Ir. imirt",
+    "gloss": "to play",
+    "etymology": [{ "language": "Middle Irish", "form": "imirt" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹnʹi꞉",
+    "raw": "ï''mʹnʹi꞉'', ‘care’, O.Ir. imned",
+    "gloss": "care",
+    "etymology": [{ "language": "Old Irish", "form": "imned" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹpʹi꞉",
+    "raw": "ï''mʹpʹi꞉'', ‘prayer’, O.Ir. impide",
+    "gloss": "prayer",
+    "etymology": [{ "language": "Old Irish", "form": "impide" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïnχɔr̥ə",
+    "raw": "ï''nχɔr̥ə'', ‘fit to wrestle with, a match for’, cp. ionchurtha Cl. S. 25 vi ’04 p. 6 col. 1",
+    "gloss": "fit to wrestle with, a match for",
+    "source_refs": [{
+      "work": "Claidheamh Soluis",
+      "volume": "25 vi ’04",
+      "page": "6",
+      "column": "1",
+      "form": "ionchurtha"
+     }]
+  }
+]
 
 INPUT
 <<<
