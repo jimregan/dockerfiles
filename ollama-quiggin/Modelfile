@@ -19,6 +19,19 @@ LANGUAGE_ABBREVIATIONS = {
   "O.Ir.": "Old Irish",
   "M.Ir.": "Middle Irish"
 }
+GRAMMAR_ABBREVIATIONS = {
+  "gen. sing. of": "genitive_singular_of",
+  "gen. sing.": "genitive_singular",
+  "nom. plur. of": "nominative_singular_of",
+  "nom. plur.": "nominative_singular",
+  "comp. of": "comparative_of",
+  "plur. of": "plural_of",
+  "plur.": "plural",
+  "imper. of": "imperative_of",
+  "imper.": "imperative",
+  "pret.": "preterite",
+  "past part.": "past_participle",
+}
 
 FIELD CONTRACT
 - Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
@@ -102,57 +115,50 @@ OUTPUT
 
 INPUT
 <<<
-{{section|s27|§ 27.}} A remarkable reduction of ''uə'' > ''ɔ'' before the stress occurs in ''Lɔχ·pʹi꞉Nʹə'', ‘a pennyworth’ < ''Luəχ'', Di. luach.
+{{section|s162|§ 162.}} In a very few cases ''e꞉i'' occurs. These are ''dʹe꞉i'', ''mə je꞉i'', ‘behind me’, O.Ir. déad, diaid, degaid; ''tʹe꞉i'', imper. of ''tʹɛuw'', ‘to heat’, Di. teidheadh, pret. ''he꞉i'', past part. ''tʹe꞉itʹə'', but forms with ''ei'' are also frequent, e.g. from ''spʹrʹɛuw'' beside the pret. ''spʹrʹe꞉i mʹə'' the future ''spʹrʹeiçə mʹə'' occurs, past part. ''spʹrʹeitʹə''.
 >>>
-OUTPUT
-[
-  {
-    "section": "s27",
-    "phonetic": "Lɔχ·pʹi꞉Nʹə",
-    "raw": "''Lɔχ·pʹi꞉Nʹə'', ‘a pennyworth’ < ''Luəχ'', Di. luach",
-    "gloss": "a pennyworth",
-    "derived_from": {
-      "phonetic": "Luəχ",
-      "source_refs": { "work": "Dinneen", "form": "luach" }
-    },
-    "notes": ["uə → ɔ before the stress"]
-  }
-]
 
-INPUT
-<<<
-{{section|s32|§ 32.}} ''tʹɔ꞉'', comp. of ''tʹe'', ‘hot’, cp. Wi. teou s. tee.
->>>
 OUTPUT
 [
   {
-    "section": "s32",
-    "phonetic": "tʹɔ꞉",
-    "raw": "''tʹɔ꞉'', comp. of ''tʹe'', ‘hot’, cp. Wi. teou s. tee",
-    "gloss": "hot",
-    "relations": { "type": "comparative_of", "phonetic": "tʹe" },
-    "source_refs": { "work": "Windisch", "form": "teou", "see": "tee" }
-  }
-]
-
-INPUT
-<<<
-{{section|s27|§ 27.}} ''gɔl ·çɔ꞉lʹ'', ‘to sing’ (‘to sing a song’ is ''ɔ꞉rαn ə rα꞉''(''tʹ''), imperative ''αbwirʹ ɔ꞉rαn'') < gabháil cheóil, shews loss of palatalisation in a weakly stressed syllable.
->>>
-OUTPUT
-[
+    "section": "s162",
+    "phonetic": "dʹe꞉i",
+    "raw": "''dʹe꞉i'', ''mə je꞉i'', ‘behind me’, O.Ir. déad, diaid, degaid",
+    "etymology": {
+      "language": "Old Irish",
+      "forms": ["déad", "diaid", "degaid"]
+    }
+  },
   {
-    "section": "s27",
-    "phonetic": "gɔl ·çɔ꞉lʹ",
-    "raw": "''gɔl ·çɔ꞉lʹ'', ‘to sing’ (‘to sing a song’ is ''ɔ꞉rαn ə rα꞉''(''tʹ''), imperative ''αbwirʹ ɔ꞉rαn'') < gabháil cheóil",
-    "transcription": "gabháil cheóil",
-    "gloss": "to sing",
+    "section": "s162",
+    "phonetic": "mə je꞉i",
+    "raw": "''dʹe꞉i'', ''mə je꞉i'', ‘behind me’, O.Ir. déad, diaid, degaid",
+    "gloss": "behind me",
+    "etymology": {
+      "language": "Old Irish",
+      "forms": ["déad", "diaid", "degaid"]
+    }
+  },
+  {
+    "section": "s162",
+    "phonetic": "tʹe꞉i",
+    "raw": "''tʹe꞉i'', imper. of ''tʹɛuw'', ‘to heat’, Di. teidheadh, pret. ''he꞉i'', past part. ''tʹe꞉itʹə''",
+    "gloss": "imperative",
+    "relations": { "type": "imperative_of", "phonetic": "tʹɛuw" },
+    "source_refs": { "work": "Dinneen", "form": "teidheadh" },
     "related": [
-      { "phonetic": "ɔ꞉rαn ə rα꞉(tʹ)", "gloss": "to sing a song" },
-      { "type": "imperative", "phonetic": "αbwirʹ ɔ꞉rαn" }
-    ],
-    "notes": ["Shows loss of palatalisation in weakly stressed syllable."]
+      { "type": "preterite", "phonetic": "he꞉i" },
+      { "type": "past_participle", "phonetic": "tʹe꞉itʹə" }
+    ]
+  },
+  {
+    "section": "s162",
+    "phonetic": "spʹrʹɛuw",
+    "raw": "from ''spʹrʹɛuw'' beside the pret. ''spʹrʹe꞉i mʹə'' the future ''spʹrʹeiçə mʹə'' occurs, past part. ''spʹrʹeitʹə''",
+    "related": [
+      { "type": "preterite", "phonetic": "spʹrʹe꞉i mʹə" },
+      { "type": "future", "phonetic": "spʹrʹeiçə mʹə" },
+      { "type": "past_participle", "phonetic": "spʹrʹeitʹə" }
+    ]
   }
 ]
-"""
-
