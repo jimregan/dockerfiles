@@ -17,7 +17,9 @@ ABBREVIATIONS = {
 }
 LANGUAGE_ABBREVIATIONS = {
   "O.Ir.": "Old Irish",
-  "M.Ir.": "Middle Irish"
+  "M.Ir.": "Middle Irish",
+  "Manx": "Manx",
+  "Scotch G.": "Scots Gaelic"
 }
 GRAMMAR_ABBREVIATIONS = {
   "gen. sing. of": "genitive_singular_of",
@@ -38,11 +40,12 @@ FIELD CONTRACT
 - Include only data explicitly present. Omit unknown fields (no null / {}).
 - Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, literature_refs, raw.
 - Always include "raw": the exact substring that produced the entry (post-HTML-unescape).
-- etymology uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only, expanding language abbreviations using `LANGUAGE_ABBREVIATIONS`.
-- source_refs are for works (expand `ABBREVIATIONS`; handle “s.” with {"form":"X","see":"Y"}).
-- Use relations only when explicitly stated, expanding abbreviations using `GRAMMAR_ABBREVIATIONS`.
-- Do NOT extract general rules in this pass. Copy phonetic strings exactly.
-- Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword listed (each quoted form like ''…'').
+- `etymology` uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only.
+- `source_refs` are for works (expand ABBREVIATIONS; handle “s.” with {"form":"X","see":"Y"}).
+- `related` entries that contain a language abbreviation (e.g., 'Manx') must use {"language":"...","form":"..."} and expand the abbreviation using `RELATED_LANGUAGE_ABBREVIATIONS`.
+- Use `relations` only when explicitly stated, expanding abbreviations using `GRAMMAR_ABBREVIATIONS`.
+- Only extract entries that begin with a quoted form like ''...'' or a grammatical relation phrase like 'gen. sing. ...' that is followed by a quoted form. Do not extract general phonetic rules or descriptive text as entries.
+- Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword.
 - Normalize cross-refs: {{QDD|N}} → "see_section": "sN" (e.g., {{QDD|42}} → "s42").
 - When multiple heads share a single gloss/etymology clause, output separate objects for each headword, repeating the shared data.
 
@@ -160,6 +163,51 @@ OUTPUT
       { "type": "future", "phonetic": "spʹrʹeiçə mʹə" },
       { "type": "past_participle", "phonetic": "spʹrʹeitʹə" }
     ]
+  }
+]
+
+INPUT
+<<<
+{{section|s241|§ 241.}} ''N'' arises out of ng in a few instances, e.g. ''αskəN'', ‘eel’, O.Ir. escung; ''kũ꞉N'', ‘narrow’, O.Ir. cumung, cp. Manx coon, Scotch G. cumhann; ''ə Nαχ Lα̃꞉v'' = i ngach láimh.
+>>>
+
+OUTPUT
+[
+  {
+    "section": "s241",
+    "phonetic": "αskəN",
+    "raw": "''αskəN'', ‘eel’, O.Ir. escung",
+    "gloss": "eel",
+    "etymology": {
+      "language": "Old Irish",
+      "form": "escung"
+    }
+  },
+  {
+    "section": "s241",
+    "phonetic": "kũ꞉N",
+    "raw": "''kũ꞉N'', ‘narrow’, O.Ir. cumung, cp. Manx coon, Scotch G. cumhann",
+    "gloss": "narrow",
+    "etymology": {
+      "language": "Old Irish",
+      "form": "cumung"
+    },
+    "related": [
+      {
+        "language": "Manx",
+        "form": "coon"
+      },
+      {
+        "language": "Scots Gaelic",
+        "form": "cumhann"
+      }
+    ]
+  },
+  {
+    "section": "s241",
+    "phonetic": "ə Nαχ Lα̃꞉v",
+    "raw": "''ə Nαχ Lα̃꞉v'' = i ngach láimh",
+    "transcription": "i ngach láimh"
   }
 ]
 """
