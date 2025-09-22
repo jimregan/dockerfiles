@@ -38,9 +38,9 @@ FIELD CONTRACT
 - Include only data explicitly present. Omit unknown fields (no null / {}).
 - Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, literature_refs, raw.
 - Always include "raw": the exact substring that produced the entry (post-HTML-unescape).
-- etymology uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only.
-- source_refs are for works (expand ABBREVIATIONS; handle “s.” with {"form":"X","see":"Y"}).
-- Use relations only when explicitly stated (e.g., genitive_singular_of, comparative_of).
+- etymology uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only, expanding language abbreviations using `LANGUAGE_ABBREVIATIONS`.
+- source_refs are for works (expand `ABBREVIATIONS`; handle “s.” with {"form":"X","see":"Y"}).
+- Use relations only when explicitly stated, expanding abbreviations using `GRAMMAR_ABBREVIATIONS`.
 - Do NOT extract general rules in this pass. Copy phonetic strings exactly.
 - Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword listed (each quoted form like ''…'').
 - Normalize cross-refs: {{QDD|N}} → "see_section": "sN" (e.g., {{QDD|42}} → "s42").
