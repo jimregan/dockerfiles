@@ -33,6 +33,7 @@ GRAMMAR_ABBREVIATIONS = {
   "imper.": "imperative",
   "pret.": "preterite",
   "past part.": "past_participle",
+  "infin. of": "infinitive_of",
   "infin.": "infinitive"
 }
 
