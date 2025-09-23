@@ -33,12 +33,14 @@ GRAMMAR_ABBREVIATIONS = {
   "imper.": "imperative",
   "pret.": "preterite",
   "past part.": "past_participle",
+  "infin. of": "infinitive_of",
+  "infin.": "infinitive",
 }
 
 FIELD CONTRACT
 - Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
 - Include only data explicitly present. Omit unknown fields (no null / {}).
-- Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, literature_refs, raw.
+- Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, raw.
 - Always include "raw": the exact substring that produced the entry (post-HTML-unescape).
 - `etymology` uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only.
 - `source_refs` are for works (expand ABBREVIATIONS; handle “s.” with {"form":"X","see":"Y"}).
@@ -48,6 +50,7 @@ FIELD CONTRACT
 - Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword.
 - Normalize cross-refs: {{QDD|N}} → "see_section": "sN" (e.g., {{QDD|42}} → "s42").
 - When multiple heads share a single gloss/etymology clause, output separate objects for each headword, repeating the shared data.
+- Extract any quoted phonetic form that is clearly associated with lexical content (glosses, etymologies, or grammatical descriptions), even when embedded in explanatory text.
 
 FEW-SHOT
 
