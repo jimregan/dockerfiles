@@ -1,0 +1,19 @@
+diff --git a/src/data_utils.py b/src/data_utils.py
+index 3a1adcf..e061184 100644
+--- a/src/data_utils.py
++++ b/src/data_utils.py
+@@ -58,13 +58,7 @@ def load_all_pronuncation_dictionaries(path: str, prefix: bool = False, mask_pro
+                 else:
+                     variant = ''
+                 if prefix == True:
+-                    if mask_prob == 0.0:
+-                        word = '<'+language+'>:' + word
+-                    else:
+-                        if np.random.uniform() > mask_prob:
+-                            word = '<unk>:' + word
+-                        else:
+-                            word = '<'+language+'>:' + word
++                    word = f"g2p|lang={language}:{word}"
+                 words.append(word)
+                 prons.append(pron)
+                 variants.append(variant)
