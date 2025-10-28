@@ -8,3 +8,4 @@ COPY install_phonetisaurus.sh /opt/kaldi/tools/extras/
 RUN extras/install_phonetisaurus.sh
 WORKDIR /opt/kaldi/egs/ClarinStudioKaldi
 COPY path.sh .
+COPY run.sh .
