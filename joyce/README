@@ -1,3 +1,0 @@
-SDL has MIT-SHM by default; this cannot run on a remote X server.
-
-Potential work-arounds: https://github.com/libsdl-org/SDL/issues/8956#issuecomment-3190240095
