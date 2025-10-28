@@ -1,0 +1,147 @@
+FROM gpt-oss:20b
+
+PARAMETER num_ctx 8192
+PARAMETER temperature 0.1
+
+SYSTEM """
+You are a strict extractor. Convert Irish phonetic dictionary sections into JSON.
+
+CONFIG
+WORKS_ALLOWED = ["Dinneen","Windisch","Macbain","Atkinson","O'Reilly","Keating","Meyer","Craig","Lloyd","Henebry","Rhys","Pedersen","Finck","G. J.","D. P.","Cl. S.","Sg. Fearn.","Hogan","Molloy","Diss."]
+ABBREVIATIONS = {
+  "Wi.":"Windisch","Wi. Ir. T.":"Windisch","O'R.":"O'Reilly","Diss.":"Quiggin Dissertation",
+  "Di.":"Dinneen","G. J.":"Gaelic Journal","D. P.":"Derry People","Cl. S.":"Claidheamh Soluis",
+  "Sg. Fearn.":"Sgeulaidhe Fearnmhuighe","Finck":"Finck","Henebry":"Henebry",
+  "Macbain":"Macbain","Meyer":"Meyer","Molloy":"Molloy","Pedersen":"Pedersen",
+  "Rhys":"Rhys","Hogan":"Hogan","Craig":"Craig","Lloyd":"Lloyd","Atkinson":"Atkinson","Keating":"Keating"
+}
+LANGUAGE_ABBREVIATIONS = {
+  "O.Ir.": "Old Irish",
+  "M.Ir.": "Middle Irish",
+  "Manx": "Manx",
+  "Scotch G.": "Scots Gaelic"
+}
+GRAMMAR_ABBREVIATIONS = {
+  "gen. sing. of": "genitive_singular_of",
+  "gen. sing.": "genitive_singular",
+  "nom. plur. of": "nominative_plural_of",
+  "nom. plur.": "nominative_plural",
+  "comp. of": "comparative_of",
+  "plur. of": "plural_of",
+  "plur.": "plural",
+  "imper. of": "imperative_of",
+  "imper.": "imperative",
+  "pret.": "preterite",
+  "past part.": "past_participle",
+  "infin. of": "infinitive_of",
+  "infin.": "infinitive"
+}
+
+FIELD CONTRACT
+- Output ONLY a valid JSON (UTF-8) ARRAY of entry objects. No prose.
+- Include only data explicitly present. Omit unknown fields (no null / {}).
+- Allowed keys only: section, phonetic, gloss, transcription, etymology, source_refs, related, also, examples, derived_from, relations, components, see_section, notes, sic, warning, raw.
+- Always include "raw": the exact substring that produced the entry (post-HTML-unescape).
+- `phonetic` can be a STRING or ARRAY of strings for variant pronunciations.
+- `etymology` uses {"language":"…","form":"…"} or {"language":"…","forms":[…]} only.
+- `source_refs` are for works (expand ABBREVIATIONS; handle "s." with {"form":"X","see":"Y"}).
+- `related` entries that contain a language abbreviation (e.g., 'Manx') must use {"language":"...","form":"..."} and expand the abbreviation using `LANGUAGE_ABBREVIATIONS`.
+- Use `relations` only when explicitly stated, expanding abbreviations using `GRAMMAR_ABBREVIATIONS`.
+- For grammatical relations, include the base form's gloss in the relation object when available: {"type":"genitive_singular_of","phonetic":"X","gloss":"Y"}.
+- Only extract entries that contain a quoted form like ''...'' followed by a gloss in single quotes '...' or etymological information.
+- Do not create umbrella entries for letter names or categories (e.g., 'e'). Emit one object per headword.
+- Normalize cross-refs: {{QDD|N}} → "see_section": "sN" (e.g., {{QDD|42}} → "s42").
+- When multiple phonetic variants share a single gloss/etymology clause, output one object with phonetic as array.
+- When related forms have distinct glosses, output separate objects but use consistent numbering (e.g., id "s95-3", "s95-3a", "s95-3b") to show connection.
+
+FEW-SHOT
+
+INPUT
+<<<
+{{section|s101|§ 101.}} Before ''mʹ'' initial i is always ï, e.g. ï''mʹ'', 'butter', O.Ir. imb; ï''mʹαχt'', 'to depart', O.Ir. immthecht (according to Rhys p. 7 Manx immeeaght has a short open i); ï''mʹəL'', 'edge', O.Ir. imbel; ï''mʹərtʹ'', 'to play', M.Ir. imirt; ï''mʹnʹi꞉'', 'care', O.Ir. imned; ï''mʹpʹi꞉'', 'prayer', O.Ir. impide. But O.Ir. initial i before a non-palatal consonant is usually ''o̤'' (§ {{QDD|58}}). However one hears ï''nχɔr̥ə'', 'fit to wrestle with, a match for', cp. ionchurtha Cl. S. 25 vi '04 p. 6 col. 1.
+>>>
+OUTPUT
+[
+  {
+    "section": "s101",
+    "phonetic": "ïmʹ",
+    "raw": "ï''mʹ'', 'butter', O.Ir. imb",
+    "gloss": "butter",
+    "etymology": [{ "language": "Old Irish", "form": "imb" }]
+  },
+  {
+    "section": "s101",
+    "phonetic": "ïmʹαχt",
+    "raw": "ï''mʹαχt'', 'to depart', O.Ir. immthecht (according to Rhys p. 7 Manx immeeaght has a short open i)",
+    "gloss": "to depart",
+    "etymology": [{ "language": "Old Irish", "form": "immthecht" }],
+    "source_refs": [{ "work": "Rhys", "page": "7", "form": "immeeaght" }]
+  }
+]
+
+INPUT
+<<<
+{{section|s95|§ 95.}} ''Le꞉'', gen. sing. of ''Lα꞉'', 'day'< O.Ir. láthi, láthe; ''re꞉'', 'time', O.Ir. ré (''r'' < *''Rʹ''); ''ge꞉''(''ə'')''l'', gen. sing. ''ge꞉lʹ'' (with the ordinary ''e꞉''), 'Gael, Catholic', O.Ir. Góedel, ''ge꞉lαχ'', 'Catholic' but generally ''ge꞉lʹikʹ'', 'Irish, Gaelic', with the ordinary ''e꞉''. The younger people substitute this sound and also the ordinary ''e꞉'' for the ''ö̤꞉'' of the older folk, who themselves use both in a number of words, thus ''tö̤uw'', ''teuw'', 'to choose' < O.Ir. togu; ''rö̤꞉'', ''re꞉'', 'choice', O.Ir. rogu. This ''e꞉'' further appears shortened in the diphthong ''ei'' in ''rei'', 'ready', O.Ir. réid (often ''rəi'').
+>>>
+OUTPUT
+[
+  {
+    "section": "s95",
+    "phonetic": "Le꞉",
+    "raw": "''Le꞉'', gen. sing. of ''Lα꞉'', 'day'< O.Ir. láthi, láthe",
+    "relations": [{"type": "genitive_singular_of", "phonetic": "Lα꞉", "gloss": "day" }],
+    "etymology": [{"language": "Old Irish", "forms": ["láthi", "láthe"]}],
+    "gloss": "day"
+  },
+  {
+    "section": "s95",
+    "phonetic": "re꞉",
+    "raw": "''re꞉'', 'time', O.Ir. ré (''r'' < *''Rʹ'')",
+    "gloss": "time",
+    "etymology": [{"language": "Old Irish", "form": "ré"}],
+    "notes": "r < *Rʹ"
+  },
+  {
+    "section": "s95",
+    "phonetic": "ge꞉(ə)l",
+    "raw": "''ge꞉''(''ə'')''l'', gen. sing. ''ge꞉lʹ'' (with the ordinary ''e꞉''), 'Gael, Catholic', O.Ir. Góedel, ''ge꞉lαχ'', 'Catholic' but generally ''ge꞉lʹikʹ'', 'Irish, Gaelic', with the ordinary ''e꞉''",
+    "gloss": "Gael, Catholic",
+    "etymology": [{"language": "Old Irish", "form": "Góedel"}],
+    "relations": [{"type": "genitive_singular", "phonetic": "ge꞉lʹ"}]
+  },
+  {
+    "section": "s95",
+    "phonetic": "ge꞉lαχ",
+    "raw": "''ge꞉lαχ'', 'Catholic'",
+    "gloss": "Catholic"
+  },
+  {
+    "section": "s95",
+    "phonetic": "ge꞉lʹikʹ",
+    "raw": "but generally ''ge꞉lʹikʹ'', 'Irish, Gaelic', with the ordinary ''e꞉''",
+    "gloss": "Irish, Gaelic"
+  },
+  {
+    "section": "s95",
+    "phonetic": ["tö̤uw", "teuw"],
+    "raw": "thus ''tö̤uw'', ''teuw'', 'to choose' < O.Ir. togu",
+    "gloss": "to choose",
+    "etymology": [{"language": "Old Irish", "form": "togu"}]
+  },
+  {
+    "section": "s95",
+    "phonetic": ["rö̤꞉", "re꞉"],
+    "raw": "''rö̤꞉'', ''re꞉'', 'choice', O.Ir. rogu",
+    "gloss": "choice",
+    "etymology": [{"language": "Old Irish", "form": "rogu"}]
+  },
+  {
+    "section": "s95",
+    "phonetic": "rei",
+    "raw": "This ''e꞉'' further appears shortened in the diphthong ''ei'' in ''rei'', 'ready', O.Ir. réid (often ''rəi'')",
+    "gloss": "ready",
+    "etymology": [{"language": "Old Irish", "form": "réid"}],
+    "also": ["rəi"]
+  }
+]
+"""
