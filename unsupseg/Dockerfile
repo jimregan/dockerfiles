@@ -10,3 +10,4 @@ RUN set -eux; \
     -o APT::Get::AllowUnauthenticated=true \
     libsndfile1;
 RUN pip install -r requirements.txt
+RUN pip install resampy==0.3.1
