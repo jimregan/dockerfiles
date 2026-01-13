@@ -62,21 +62,16 @@ echo "OK: $out ($sz bytes)"
 EOF
 RUN chmod +x /usr/local/bin/hf_get
 
-# Now fetch Swedish assets and *fail the build* if anything is wrong.
-# IMPORTANT: use ?download=true to force blob delivery.
 RUN mkdir -p /gentle/exp/tdnn_7b_chain_online/ivector_extractor && \
     mkdir -p /gentle/exp/langdir && \
     mkdir -p /gentle/exp/tdnn_7b_chain_online/graph_pp/phones && \
     \
-    # Acoustic model (set minimum sizes that are "obviously real")
     hf_get "$HF_BASE/exp/chain/tdnn/final.mdl?download=true" \
       "/gentle/exp/tdnn_7b_chain_online/final.mdl" 50000000 && \
     hf_get "$HF_BASE/exp/chain/tdnn/tree?download=true" \
       "/gentle/exp/tdnn_7b_chain_online/tree" 500000 && \
     hf_get "$HF_BASE/exp/chain/tdnn/frame_subsampling_factor?download=true" \
       "/gentle/exp/tdnn_7b_chain_online/frame_subsampling_factor" 1 && \
-    \
-    # i-vector extractor (use 10.ie as final.ie)
     hf_get "$HF_BASE/exp/chain/extractor/10.ie?download=true" \
       "/gentle/exp/tdnn_7b_chain_online/ivector_extractor/final.ie" 1000000 && \
     hf_get "$HF_BASE/exp/chain/extractor/final.dubm?download=true" \
@@ -89,9 +84,6 @@ RUN mkdir -p /gentle/exp/tdnn_7b_chain_online/ivector_extractor && \
       "/gentle/exp/tdnn_7b_chain_online/ivector_extractor/splice_opts" 10 && \
     hf_get "$HF_BASE/exp/chain/extractor/online_cmvn.conf?download=true" \
       "/gentle/exp/tdnn_7b_chain_online/ivector_extractor/online_cmvn.conf" 1 && \
-    \
-    # langdir (you said you have lang_chain locally; once it's on HF, point HF_BASE at it)
-    # Example paths — adjust to whatever you upload:
     hf_get "$HF_BASE/data/lang_chain/L.fst?download=true" \
       "/gentle/exp/langdir/L.fst" 1000 && \
     hf_get "$HF_BASE/data/lang_chain/L_disambig.fst?download=true" \
@@ -106,9 +98,6 @@ RUN mkdir -p /gentle/exp/tdnn_7b_chain_online/ivector_extractor && \
       "/gentle/exp/langdir/oov.int" 1 && \
     hf_get "$HF_BASE/data/lang_chain/oov.txt?download=true" \
       "/gentle/exp/langdir/oov.txt" 1 && \
-    \
-    # "graph_pp" metadata: if Gentle insists on these paths existing,
-    # mirror phones/words/phones.txt from langdir (all small text, so checks are light).
     cp -a /gentle/exp/langdir/words.txt  /gentle/exp/tdnn_7b_chain_online/graph_pp/words.txt && \
     cp -a /gentle/exp/langdir/phones.txt /gentle/exp/tdnn_7b_chain_online/graph_pp/phones.txt && \
     cp -a /gentle/exp/langdir/phones/*   /gentle/exp/tdnn_7b_chain_online/graph_pp/phones/ || true
