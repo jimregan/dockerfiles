@@ -28,7 +28,8 @@ RUN git clone https://github.com/microsoft/VibeVoice.git .
 # Install PyTorch with CUDA support first
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# Install flash-attn (requires torch to be installed first)
+# Install flash-attn (requires torch and packaging to be installed first)
+RUN pip install packaging ninja
 RUN pip install flash-attn --no-build-isolation
 
 # Install the package and dependencies
