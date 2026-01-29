@@ -28,9 +28,7 @@ RUN git clone https://github.com/microsoft/VibeVoice.git .
 # Install PyTorch with CUDA support first
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# Install flash-attn (requires torch and packaging to be installed first)
-RUN pip install packaging ninja psutil
-RUN pip install flash-attn --no-build-isolation
+# Note: Using sdpa attention (built into PyTorch) instead of flash-attn for compatibility
 
 # Install the package and dependencies
 RUN pip install -e .
@@ -51,5 +49,5 @@ RUN python3 -c "from huggingface_hub import snapshot_download; snapshot_download
 # Expose Gradio port
 EXPOSE 7860
 
-# Run the demo with the local model path
-CMD ["python3", "demo/vibevoice_asr_gradio_demo.py", "--model_path", "/app/models/VibeVoice-ASR", "--host", "0.0.0.0", "--port", "7860"]
+# Run the demo with the local model path (using sdpa attention for compatibility)
+CMD ["python3", "demo/vibevoice_asr_gradio_demo.py", "--model_path", "/app/models/VibeVoice-ASR", "--attn_implementation", "sdpa", "--host", "0.0.0.0", "--port", "7860"]
