@@ -35,6 +35,9 @@ RUN pip install flash-attn --no-build-isolation
 # Install the package and dependencies
 RUN pip install -e .
 
+# Ensure gradio dependencies are complete
+RUN pip install pytz
+
 # Install optional liger-kernel for better performance
 RUN pip install liger-kernel || true
 
