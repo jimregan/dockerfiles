@@ -11,6 +11,7 @@ RUN conda env update --file environment.yml
 
 RUN pip install git+https://github.com/openai/CLIP.git
 
+RUN apt-get install -y unzip
 
 # Set env vars to use it as default
 ENV CONDA_ENV_NAME=omnicontrol
