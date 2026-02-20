@@ -20,3 +20,5 @@ RUN echo "source activate ${CONDA_ENV_NAME}" >> ~/.bashrc
 
 RUN conda run -n omnicontrol python -m spacy download en_core_web_sm
 
+# GloVe vectors from https://github.com/EricGuo5513/text-to-motion
+RUN bash prepare/download_glove.sh
