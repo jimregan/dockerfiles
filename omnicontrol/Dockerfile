@@ -11,6 +11,7 @@ RUN conda env update --file environment.yml
 
 RUN pip install git+https://github.com/openai/CLIP.git
 
+RUN apt-get install -y unzip
 
 # Set env vars to use it as default
 ENV CONDA_ENV_NAME=omnicontrol
@@ -19,8 +20,8 @@ RUN echo "source activate ${CONDA_ENV_NAME}" >> ~/.bashrc
 
 RUN conda run -n omnicontrol python -m spacy download en_core_web_sm
 
-RUN bash prepare/download_smpl_files.sh
 RUN bash prepare/download_glove.sh
+RUN bash prepare/download_smpl_files.sh
 RUN bash prepare/download_t2m_evaluators.sh
 
 
