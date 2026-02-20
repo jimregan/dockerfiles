@@ -1,0 +1,148 @@
+diff --git a/utils/model_test_example.py b/utils/model_test_example.py
+new file mode 100644
+index 0000000..9a2f52d
+--- /dev/null
++++ b/utils/model_test_example.py
+@@ -0,0 +1,141 @@
++import numpy as np
++from utils.text_control_example import specify_points
++from os.path import join as pjoin
++
++# joints:
++# 0: pelvis
++# 10: l_foot
++# 11: r_foot
++# 15: head
++# 20: l_wrist
++# 21: r_wrist
++HML_JOINT_NAMES = [
++    'pelvis',
++    'left_hip',
++    'right_hip',
++    'spine1',
++    'left_knee',
++    'right_knee',
++    'spine2',
++    'left_ankle',
++    'right_ankle',
++    'spine3',
++    'left_foot',
++    'right_foot',
++    'neck',
++    'left_collar',
++    'right_collar',
++    'head',
++    'left_shoulder',
++    'right_shoulder',
++    'left_elbow',
++    'right_elbow',
++    'left_wrist',
++    'right_wrist',
++]
++
++def normalize_control(n_frames=120, raw_mean=None, raw_std=None, control=None, joint_id=None):    
++    joints = int(raw_mean.shape[0]/3)    
++    #print(f'joints: {joints}')
++    control_full = np.zeros((len(control), n_frames, joints, 3)).astype(np.float32)        
++    for i in range(len(control)):        
++        mask = control[i].sum(-1) != 0                
++        control_ = (control[i] - raw_mean.reshape(joints, 1, 3)[joint_id[i]]) / raw_std.reshape(joints, 1, 3)[joint_id[i]]        
++        control_ = control_ * mask[..., np.newaxis]
++        control_full[i, :, joint_id[i], :] = control_
++    
++    control_full = control_full.reshape((len(control), n_frames, -1))
++    
++    return control_full
++
++def point_test(n_frames=120, raw_mean=None, raw_std=None, index=0):    
++    # select which scenario to generate through index parameter        
++    text = [        
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++        'A person is talking while gesturing',
++    ]      
++        
++    start_frame = 20
++    end_frame = 60
++
++    coords_1 = [-0.4, 1, 0.4]
++    coords_2 = [0.4, 1, 0.4]
++    
++    # initialize control vector
++    point_dir_1 = specify_points(n_frames, [[start_frame, *coords_1]])                    
++    point_dir_2 = specify_points(n_frames, [[start_frame, *coords_2]])                    
++    
++    # extend pointing value until end_frame    
++    point_dir_1[start_frame:end_frame, :] = point_dir_1[start_frame, :]                  
++    point_dir_2[start_frame:end_frame, :] = point_dir_2[start_frame, :]                  
++    
++    empty_control = np.zeros(point_dir_1.shape)
++
++    control = [
++        [point_dir_1, empty_control],
++        [point_dir_1, point_dir_2],  
++        [point_dir_1, empty_control],
++        [point_dir_1, point_dir_2],  
++        [point_dir_1, empty_control],
++        [point_dir_1, point_dir_2],  
++        [point_dir_1, empty_control],
++        [point_dir_1, point_dir_2],  
++        [point_dir_1, empty_control],
++        [point_dir_1, point_dir_2],               
++    ]
++    
++    # specify joints to be controlled for each scenario   
++    joint_id = np.array([        
++        [21, 20],        
++        [21, 20], 
++        [21, 20],        
++        [21, 20], 
++        [21, 20],        
++        [21, 20], 
++        [21, 20],        
++        [21, 20], 
++        [21, 20],        
++        [21, 20],                        
++    ])            
++    control = np.stack(control)      
++
++    # pick correct control signal by index
++    control = control[index:index+1]
++    text = text[index:index+1]             
++
++    # create empty control vectors for remaining joints    
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)            
++    
++    return text, control_full, joint_id
++
++def collate_all(n_frames, dataset):
++    if dataset == 'humanml':
++        spatial_norm_path = './dataset/humanml_spatial_norm'
++    elif dataset == 'kit':
++        spatial_norm_path = './dataset/kit_spatial_norm'
++    else:
++        raise NotImplementedError('unknown dataset')
++    raw_mean = np.load(pjoin(spatial_norm_path, 'Mean_raw.npy'))
++    raw_std = np.load(pjoin(spatial_norm_path, 'Std_raw.npy'))        
++
++    # create spatial control signals  
++    hint_arr = []
++    text_arr = []
++    for i in range(10):
++        t,c,_= point_test(n_frames, raw_mean, raw_std, index=i)        
++        hint_arr.append(c) 
++        text_arr.append(t[0])
++
++    hint_arr = hint_arr
++    text_arr = text_arr
++    hints = np.concatenate([*hint_arr], axis=0)        
++    
++    return text_arr, hints
+\ No newline at end of file

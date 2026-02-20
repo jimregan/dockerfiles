@@ -1,0 +1,380 @@
+diff --git a/utils/model_test.py b/utils/model_test.py
+new file mode 100644
+index 0000000..95852aa
+--- /dev/null
++++ b/utils/model_test.py
+@@ -0,0 +1,373 @@
++import numpy as np
++from utils.text_control_example import straight_forward_uniform, specify_points
++from os.path import join as pjoin
++
++# joints:
++# 0: pelvis:
++# 10: l_foot: kick something
++# 11: r_foot: kick something
++# 15: head: walk into a tunnel or something
++# 20: l_wrist: raise a toolbox, or touch something, or hold something
++# 21: r_wrist: raise a toolbox, or touch something, or hold something, or walk with one hand on the handrail
++
++def normalize_control(n_frames=120, raw_mean=None, raw_std=None, control=None, joint_id=None):    
++    joints = int(raw_mean.shape[0]/3)    
++    print(f'joints: {joints}')
++    control_full = np.zeros((len(control), n_frames, joints, 3)).astype(np.float32)        
++    for i in range(len(control)):        
++        mask = control[i].sum(-1) != 0                
++        control_ = (control[i] - raw_mean.reshape(joints, 1, 3)[joint_id[i]]) / raw_std.reshape(joints, 1, 3)[joint_id[i]]        
++        control_ = control_ * mask[..., np.newaxis]
++        control_full[i, :, joint_id[i], :] = control_
++    
++    control_full = control_full.reshape((len(control), n_frames, -1))
++    
++    return control_full
++
++"""
++Test the model's capability to follow directional control signals like 
++ensuring that the head is consistently oriented in a specific direction.
++"""
++def directional_test(n_frames=120, raw_mean=None, raw_std=None, index=0):    
++    text = [        
++        'A person walks sideways',
++        'A person walks sideways',
++        '',
++        'A person walks backwards',
++        'A person walks sideways',
++        'A person walks sideways',
++    ]
++    walk_line = straight_forward_uniform(n_frames, indices=[0], scale=5, x_offset=0.0, y_offset=0.7, z_offset=0)
++    head_dir1 = specify_points(n_frames, [[0, -0.5, 2.0, 1]])    
++    head_dir2 = specify_points(n_frames, [[0, 4, 2.0, 1]])    
++    head_dir3 = specify_points(n_frames, [[0, 0, 1.0, 0]])    
++
++    control = [
++        [walk_line, head_dir1],
++        [head_dir1, walk_line],
++        [walk_line, head_dir1],
++        [walk_line, head_dir2],
++        [head_dir3, walk_line],
++        [head_dir3, walk_line],
++    ]
++    joint_id = np.array([
++        # pelvis, head 
++        [0, 15],
++        [15, 0],
++        [0, 15],
++        [0, 15],
++        [15, 0],
++        [15, 21],
++    ])        
++    control = np.stack(control)    
++
++    #print(control[0,0])
++    #print(control[0,1])
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]        
++
++    # extend point control signal  
++    if(index == 0 or index == 2 or index == 3):
++        control[0, 1, 0:140] = control[0, 1, 0]        
++    else:
++        control[0, 0, 0:140] = control[0, 0, 0]          
++
++    #print(control[0,0])
++    #print(control[0,1])
++    
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)    
++    
++    return text, control_full, joint_id
++
++"""
++Test the model's ability to perform different types of gestures
++"""
++def gesture_testing(n_frames=120, raw_mean=None, raw_std=None, index=0):    
++    text = [        
++        'A person points with their right hand',        
++        'A person points with their right hand',   
++        'A person waves' 
++        'I am so tired of running'    
++    ]      
++    start_frame = 20
++    switch_diff = 50
++
++    point_dir1 = specify_points(n_frames, [[start_frame, -0.35, 1, 0.1]])    
++    point_dir1[start_frame:start_frame+switch_diff] = point_dir1[start_frame]    
++
++    point_dirs = [[-0.2, 1, 0.1], [0.3, 1, 0.2], [0.1, 1, 1.2]]        
++    point_dirs_combined = np.zeros(shape=(n_frames, 3))    
++
++    # combine different pointing directions
++    for i, val in enumerate(point_dirs):        
++        switch_frame = start_frame + switch_diff * i         
++        point_dirs_combined[switch_frame:switch_frame + switch_diff] = val    
++        
++    empty_control = np.zeros((len(point_dir1), 3))
++
++    control = [
++        [point_dir1],
++        [point_dirs_combined],       
++        [empty_control],
++        [empty_control], 
++    ]
++    joint_id = np.array([
++        # r_wrist 
++        [21],        
++        [21],                
++        [],
++        [],
++    ])        
++    control = np.stack(control)    
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]    
++    print("CONTROL ------------")
++    print(control)                  
++
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)    
++    
++    return text, control_full, joint_id
++
++
++def point_test(n_frames=120, raw_mean=None, raw_std=None, index=0):    
++    text = [        
++        'A person points with their right hand',        
++        'A person points with their right hand',   
++        'A person waves' 
++        'I am so tired of running'    
++    ]      
++    start_frame = 20
++    switch_diff = 50
++
++    point_dir1 = specify_points(n_frames, [[start_frame, -0.35, 1, 0.1]])    
++    point_dir1[start_frame:start_frame+switch_diff] = point_dir1[start_frame]    
++
++    point_dirs = [[-0.2, 1, 0.1], [0.3, 1, 0.2], [0.1, 1, 1.2]]        
++    point_dirs_combined = np.zeros(shape=(n_frames, 3))    
++
++    # combine different pointing directions
++    for i, val in enumerate(point_dirs):        
++        switch_frame = start_frame + switch_diff * i         
++        point_dirs_combined[switch_frame:switch_frame + switch_diff] = val    
++        
++    empty_control = np.zeros((len(point_dir1), 3))
++
++    control = [
++        [point_dir1],
++        [point_dirs_combined],       
++        [empty_control],
++        [empty_control], 
++    ]
++    joint_id = np.array([
++        # r_wrist 
++        [21],        
++        [21],                
++        [],
++        [],
++    ])        
++    control = np.stack(control)    
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]    
++    print("CONTROL ------------")
++    print(control)                  
++
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)    
++    
++    return text, control_full, joint_id
++
++
++def locomotion_test(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [        
++        '',
++        'a person is walking',
++        'a person is walking and then pointing',
++        '',        
++    ]           
++
++    coords_from_blender = np.load('/home/davidjo2/Desktop/master/OmniControl/coords_room.npy', allow_pickle = True)    
++    coords_origin = (coords_from_blender[0][0], coords_from_blender[0][1])
++    #print(coords_from_blender)
++
++    for i in range(len(coords_from_blender)):                
++        coords_from_blender[i,0] = coords_from_blender[i,0] - coords_origin[0]
++        coords_from_blender[i,2] = coords_from_blender[i,1] - coords_origin[1]             
++        coords_from_blender[i,2] = -coords_from_blender[i,2]
++        coords_from_blender[i,1] = 0.85
++        
++        #mirroring
++        coords_from_blender[i,0] = -coords_from_blender[i,0]
++        coords_from_blender[i,2] = -coords_from_blender[i,2]                    
++
++    coords_from_blender_short = np.zeros(coords_from_blender.shape)            
++    half_idx = coords_from_blender.shape[0] // 2    
++    coords_from_blender_short[:half_idx] = coords_from_blender[::2]            
++
++    walk_end = -50
++    coords_from_blender_half = coords_from_blender.copy()
++    coords_from_blender_half[walk_end:] = 0    
++
++    start_frame = 150
++    switch_diff = 190    
++
++    end_coord = coords_from_blender[walk_end]    
++
++    point_dir = specify_points(n_frames, [[start_frame, end_coord[0] - 0.5, end_coord[1], end_coord[2] - 0.5]])    
++    point_dir[start_frame:start_frame+switch_diff] = point_dir[start_frame]    
++    
++    empty_control = np.zeros(coords_from_blender.shape)
++
++    control = [
++        [coords_from_blender_short, empty_control],
++        [coords_from_blender_half, empty_control],
++        [coords_from_blender_half, empty_control],
++        [coords_from_blender_half, point_dir]
++    ]
++    joint_id = np.array([
++        # pelvis 
++        [0, 21],        
++        [0, 21],
++        [0, 21],
++        [0, 21],
++    ])    
++    control = np.stack(control)
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]            
++    
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)        
++    
++    return text, control_full, joint_id
++
++def sequential_test(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [        
++        ''        
++    ]      
++    start_frame = 20
++    point = specify_points(n_frames, [[start_frame, 0, 1.2, 0]])        
++    walk_line = straight_forward_uniform(n_frames, indices=[0], scale=5, x_offset=0.0, y_offset=0.9, z_offset=0)
++
++    coords_from_blender = np.load('/home/davidjo2/Desktop/master/OmniControl/coords_room.npy', allow_pickle = True)    
++    coords_origin = (coords_from_blender[0][0], coords_from_blender[0][1])
++    #print(coords_from_blender)
++
++    for i in range(len(coords_from_blender)):                
++        coords_from_blender[i,0] = coords_from_blender[i,0] - coords_origin[0]
++        coords_from_blender[i,2] = coords_from_blender[i,1] - coords_origin[1]             
++        coords_from_blender[i,2] = -coords_from_blender[i,2]
++        coords_from_blender[i,1] = 0.85
++    
++    control = [
++        [coords_from_blender],        
++    ]
++    joint_id = np.array([        
++        [0],                
++    ])           
++    control = np.stack(control)
++    
++    # stop following line after a while
++    stop_frame = 100
++    control[0][0][stop_frame:] = np.zeros((3))
++    print(control)    
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]
++     
++    # extend point control signal
++    #control[0, 0, start_frame:100] = control[0, 0, start_frame]       
++
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)        
++    
++    return text, control_full, joint_id
++
++
++def simple_test(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [        
++        'A person is walking'        
++    ]      
++    start_frame = 20
++    point = specify_points(n_frames, [[start_frame, 0, 1.2, 0]])        
++    walk_line = straight_forward_uniform(n_frames, indices=[0], scale=5, x_offset=0.0, y_offset=0.7, z_offset=0)
++
++    control = [
++        [walk_line],        
++    ]
++    joint_id = np.array([        
++        [0],                
++    ])           
++    control = np.stack(control)
++
++    print(control)
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]
++     
++    # extend point control signal
++    #control[0, 0, start_frame:100] = control[0, 0, start_frame]       
++
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)        
++    
++    return text, control_full, joint_id
++
++
++"""
++Template test
++"""
++def template_test(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [        
++        'A person is walking forwards',
++        'A person is walking in a circle'
++    ]      
++    start_frame = 20
++    point = specify_points(n_frames, [[start_frame, 0, 0.9, 0]])        
++
++    control = [
++        [],
++        [],
++    ]
++    joint_id = np.array([
++        # pelvis 
++        [],
++        [],        
++    ])       
++    print(control)
++    control = np.stack(control)
++
++    # pick control signals by index
++    control = control[index:index+1]
++    text = text[index:index+1]
++     
++    # extend point control signal
++    #control[0, 0, start_frame:100] = control[0, 0, start_frame]       
++
++    control_full = normalize_control(n_frames, raw_mean, raw_std, control, joint_id)    
++    
++    return text, control_full, joint_id
++
++def collate_all(n_frames, dataset):
++    if dataset == 'humanml':
++        spatial_norm_path = './dataset/humanml_spatial_norm'
++    elif dataset == 'kit':
++        spatial_norm_path = './dataset/kit_spatial_norm'
++    else:
++        raise NotImplementedError('unknown dataset')
++    raw_mean = np.load(pjoin(spatial_norm_path, 'Mean_raw.npy'))
++    raw_std = np.load(pjoin(spatial_norm_path, 'Std_raw.npy'))    
++
++    print(f'dataset used: {dataset}')
++    print(f'raw_mean: {raw_mean.shape}')
++    print(f'raw_std: {raw_std.shape}')
++
++    texts, hints, _ = locomotion_test(n_frames, raw_mean, raw_std, index=0)      
++
++    #texts, hints, _ = directional_test(n_frames, raw_mean, raw_std, index=0)    
++
++    return texts, hints
+\ No newline at end of file

@@ -1,0 +1,472 @@
+diff --git a/data_loaders/get_data.py b/data_loaders/get_data.py
+index 48e3496..30e851d 100644
+--- a/data_loaders/get_data.py
++++ b/data_loaders/get_data.py
+@@ -41,4 +41,4 @@ def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='tr
+         num_workers=8, drop_last=True, collate_fn=collate,
+     )
+ 
+-    return loader
+\ No newline at end of file
++    return loader
+diff --git a/data_loaders/humanml/data/dataset.py b/data_loaders/humanml/data/dataset.py
+index 9e2353e..9869fee 100644
+--- a/data_loaders/humanml/data/dataset.py
++++ b/data_loaders/humanml/data/dataset.py
+@@ -44,6 +44,7 @@ class Text2MotionDatasetV2(data.Dataset):
+ 
+         new_name_list = []
+         length_list = []
++        print(f'dataset size: {len(id_list)}')
+         for name in tqdm(id_list):
+             try:
+                 motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
+@@ -91,9 +92,13 @@ class Text2MotionDatasetV2(data.Dataset):
+                                        'text': text_data}
+                     new_name_list.append(name)
+                     length_list.append(len(motion))
+-            except:
++            except Exception as e:
++                print(e)
+                 pass
+ 
++        print(f'new_name_list: {new_name_list[:10]}')
++        print(f'length_list: {length_list[:10]}')
++        print("----------------------")
+         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
+ 
+         self.mean = mean
+@@ -143,7 +148,7 @@ class Text2MotionDatasetV2(data.Dataset):
+         joints = (joints - self.raw_mean.reshape(n_joints, 3)) / self.raw_std.reshape(n_joints, 3)
+         joints = joints * mask_seq
+         return joints
+-    
++
+     def random_mask(self, joints, n_joints=22, density=1):
+         if n_joints == 22:
+             # humanml3d
+@@ -225,7 +230,7 @@ class Text2MotionDatasetV2(data.Dataset):
+         joints = (joints - self.raw_mean.reshape(n_joints, 3)) / self.raw_std.reshape(n_joints, 3)
+         joints = joints * mask_seq
+         return joints
+-        
++
+     def __len__(self):
+         return len(self.data_dict) - self.pointer
+ 
+@@ -382,7 +387,7 @@ class TextOnlyDataset(data.Dataset):
+ class HumanML3D(data.Dataset):
+     def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", control_joint=0, density=100, **kwargs):
+         self.mode = mode
+-        
++
+         self.dataset_name = 't2m'
+         self.dataname = 't2m'
+ 
+@@ -398,6 +403,8 @@ class HumanML3D(data.Dataset):
+         opt.checkpoints_dir = pjoin(abs_base_path, opt.checkpoints_dir)
+         opt.data_root = pjoin(abs_base_path, opt.data_root)
+         opt.save_root = pjoin(abs_base_path, opt.save_root)
++        print(f'data_root: {opt.data_root}')
++        print(f'save_root: {opt.save_root}')
+         opt.meta_dir = './dataset'
+         self.opt = opt
+         print('Loading dataset %s ...' % opt.dataset_name)
+@@ -439,4 +446,4 @@ class HumanML3D(data.Dataset):
+ # A wrapper class for t2m original dataset for MDM purposes
+ class KIT(HumanML3D):
+     def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):
+-        super(KIT, self).__init__(mode, datapath, split, **kwargs)
+\ No newline at end of file
++        super(KIT, self).__init__(mode, datapath, split, **kwargs)
+diff --git a/diffusion/gaussian_diffusion.py b/diffusion/gaussian_diffusion.py
+index 60e03b8..434c03e 100644
+--- a/diffusion/gaussian_diffusion.py
++++ b/diffusion/gaussian_diffusion.py
+@@ -429,6 +429,16 @@ class GaussianDiffusion:
+             x_ = x_ * self.std + self.mean
+             n_joints = 22 if x_.shape[-1] == 263 else 21
+             joint_pos = recover_from_ric(x_, n_joints)
++
++            """ print("=====================================")
++            r_wrist_pos = joint_pos[0, :, 21]
++            r_elbow_pos = joint_pos[0, :, 19]
++            print(r_wrist_pos)
++            print(r_elbow_pos)
++            direction = r_wrist_pos-r_elbow_pos
++            direction = torch.cat((direction[:, :1], direction[:, 2:]), dim=1)
++            print(direction) """
++
+             if n_joints == 21:
+                 joint_pos = joint_pos * 0.001
+                 hint = hint * 0.001
+@@ -454,7 +464,7 @@ class GaussianDiffusion:
+         n_joint = 22 if x.shape[1] == 263 else 21
+         model_log_variance = _extract_into_tensor(self.posterior_log_variance_clipped, t, x.shape)
+         model_variance = torch.exp(model_log_variance)
+-        
++
+         if model_variance[0, 0, 0, 0] < min_variance:
+             model_variance = min_variance
+ 
+@@ -484,7 +494,7 @@ class GaussianDiffusion:
+         for m in mask_hint:
+             joint_id = torch.nonzero(m.sum(0).squeeze(-1) != 0).squeeze(1)
+             joint_ids.append(joint_id)
+-        
++
+         if not train:
+             scale = self.calc_grad_scale(mask_hint)
+ 
+@@ -495,7 +505,7 @@ class GaussianDiffusion:
+             if t[0] >= t_stopgrad:
+                 x = x - scale * grad
+         return x.detach()
+-    
++
+     def p_sample(
+         self,
+         model,
+diff --git a/sample/generate.py b/sample/generate.py
+index 711288e..225872d 100644
+--- a/sample/generate.py
++++ b/sample/generate.py
+@@ -17,12 +17,14 @@ import data_loaders.humanml.utils.paramUtil as paramUtil
+ from data_loaders.humanml.utils.plot_script import plot_3d_motion
+ import shutil
+ from data_loaders.tensors import collate
+-from utils.text_control_example import collate_all
++from utils.model_test import collate_all
++#from utils.text_control_example import collate_all
+ from os.path import join as pjoin
+ 
+ 
+ def main():
+     args = generate_args()
++    print(f'args: {args}')
+     fixseed(args.seed)
+     out_path = args.output_dir
+     name = os.path.basename(os.path.dirname(args.model_path))
+@@ -34,8 +36,13 @@ def main():
+     is_using_data = not any([args.text_prompt])
+     dist_util.setup_dist(args.device)
+     if out_path == '':
++        """
+         out_path = os.path.join(os.path.dirname(args.model_path),
+-                                'samples_{}_{}_seed{}'.format(name, niter, args.seed))
++                                'joint1_{}_{}_seed{}'.format(name, niter, args.seed))
++        """
++        print(f'output name: {args.output_name}')
++        out_path = os.path.join(os.path.dirname(args.model_path),
++                                '{}_{}_{}'.format(args.output_name, name, args.seed))
+         if args.text_prompt != '':
+             out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
+ 
+@@ -66,6 +73,11 @@ def main():
+     # (specify through the --seed flag)
+     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
+ 
++
++    print(f"Args: {args}")
++    print(f"guidance_param: {args.guidance_param}")
++    print("---------------------------------------")
++
+     print('Loading dataset...')
+     data = load_dataset(args, max_frames, n_frames)
+     total_num_samples = args.num_samples * args.num_repetitions
+@@ -126,7 +138,10 @@ def main():
+             const_noise=False,
+         )
+ 
++        print(type(sample))
++        print(sample.shape)
+         sample = sample[:, :263]
++        print(sample.shape)
+         # Recover XYZ *positions* from HumanML3D vector representation
+         if model.data_rep == 'hml_vec':
+             n_joints = 22 if sample.shape[1] == 263 else 21
+@@ -179,7 +194,7 @@ def main():
+     if 'hint' in model_kwargs['y']:
+         all_hint = np.concatenate(all_hint, axis=0)[:total_num_samples]
+         all_hint_for_vis = np.concatenate(all_hint_for_vis, axis=0)[:total_num_samples]
+-    
++
+     if len(all_hint) != 0:
+         from utils.simple_eval import simple_eval
+         results = simple_eval(all_motions, all_hint, n_joints)
+@@ -221,6 +236,19 @@ def main():
+             save_file = sample_file_template.format(sample_i, rep_i)
+             print(sample_print_template.format(caption, sample_i, rep_i, save_file))
+             animation_save_path = os.path.join(out_path, save_file)
++            """
++            print("#############################")
++            print(f'animation path: {animation_save_path}')
++            print(f'skeleton: {skeleton}')
++            print("motion")
++            print(motion)
++            print(motion.shape)
++            print(f'dataset: {args.dataset}')
++            print(f'title: {caption}')
++            print(f'fps: {fps}')
++            print(f'hint: {hint}')
++            print(hint.shape)
++            """
+             plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps, hint=hint)
+             # Credit for visualization: https://github.com/EricGuo5513/text-to-motion
+             rep_files.append(animation_save_path)
+diff --git a/train/training_loop.py b/train/training_loop.py
+index a9dea7b..e91d947 100644
+--- a/train/training_loop.py
++++ b/train/training_loop.py
+@@ -101,6 +101,7 @@ class TrainLoop:
+             self.opt.load_state_dict(state_dict)
+ 
+     def run_loop(self):
++        print(f'Number of epochs: {self.num_epochs}')
+ 
+         for epoch in range(self.num_epochs):
+             print(f'Starting epoch {epoch}')
+@@ -180,7 +181,7 @@ class TrainLoop:
+                 )
+ 
+             loss = (losses["loss"] * weights).mean()
+-            print(loss.item())
++            #print(loss.item())
+             log_loss_dict(
+                 self.diffusion, t, {k: v * weights for k, v in losses.items()}
+             )
+diff --git a/utils/parser_util.py b/utils/parser_util.py
+index ca473e8..d7badce 100644
+--- a/utils/parser_util.py
++++ b/utils/parser_util.py
+@@ -165,6 +165,8 @@ def add_generate_options(parser):
+                        help="generation mode: both_text_spatial, only_text, only_spatial. Other words will be used as text prompt.")
+     group.add_argument("--text_prompt", default='predefined', type=str,
+                        help="A text prompt to be generated. If empty, will take text prompts from dataset.")
++    group.add_argument("--output_name", default='test0', type=str,
++                       help="Name of the saved output folder")
+ 
+ 
+ def add_edit_options(parser):
+diff --git a/utils/text_control_example.py b/utils/text_control_example.py
+index 53d54eb..2efe749 100644
+--- a/utils/text_control_example.py
++++ b/utils/text_control_example.py
+@@ -30,7 +30,7 @@ def unnatural_text_control_example(n_frames=120, raw_mean=None, raw_std=None, in
+     ]
+ 
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -69,15 +69,15 @@ def motion_inbetweening(n_frames=120, raw_mean=None, raw_std=None, index=0):
+     n_joints = 22 if motion.shape[-1] == 263 else 21
+     joints = recover_from_ric(torch.from_numpy(motion).float(), n_joints)
+     joints = joints.numpy()
+-        
++
+     # normalize
+     joints = (joints - raw_mean.reshape(1, 22, 3)) / raw_std.reshape(1, 22, 3)
+-        
++
+     mask = np.zeros((n_frames, 22, 1))
+     control_joints = [0, 10, 11, 15, 20, 21]
+     for j in control_joints:
+         mask[[0, -1], j] = 1
+-        
++
+     control = joints * mask
+     control = control.reshape((n_frames, -1))
+     control_full.append(control)
+@@ -163,7 +163,7 @@ def pelvis_dense_text_control_example(n_frames=120, raw_mean=None, raw_std=None,
+         circle(n_frames, r=0.8, indices=[0, 2], x_offset=0.0, y_offset=0.9, z_offset=0.0),
+     ]
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -205,7 +205,7 @@ def pelvis_sparse_text_control_example(n_frames=120, raw_mean=None, raw_std=None
+     ]
+ 
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -269,7 +269,7 @@ def wrist_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=
+         circle(n_frames, r=0.01, indices=[0, 2], x_offset=0.5, y_offset=1.6, z_offset=0.5),
+     ]
+     joint_id = np.array([
+-        # wrist 
++        # wrist
+         21, 21, 21, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+         ])
+     control = np.stack(control)
+@@ -326,7 +326,7 @@ def head_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+         specify_points(n_frames, [[90, 0, 0.8, 1.0]]),
+     ]
+     joint_id = np.array([
+-        # head 
++        # head
+         15,
+         ])
+     control = np.stack(control)
+@@ -337,6 +337,7 @@ def head_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+     control = control[index:index+1]
+     text = text[index:index+1]
+ 
++
+     # normalize
+     control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
+     for i in range(len(control)):
+@@ -368,7 +369,7 @@ def foot_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+         specify_points(n_frames, [[30, 0, 1.0, 1.0]]),
+     ]
+     joint_id = np.array([
+-        # right foot 
++        # right foot
+         10, 11, 11, 11
+         ])
+     control = np.stack(control)
+@@ -386,7 +387,7 @@ def foot_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+     control = control[index:index+1]
+     text = text[index:index+1]
+     joint_id = joint_id[index:index+1]
+-    
++
+     # normalize
+     control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
+     for i in range(len(control)):
+@@ -646,6 +647,79 @@ def sample_points_forward_back_verticel(n):
+         points.append((x, y))
+     return points
+ 
++def ducking_example(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [
++        #head
++        'A person ducks under an obstacle while walking forwards'
++    ]
++    straight_line = straight_forward_uniform(n_frames, indices=[2], scale=5, x_offset=0, y_offset=0.7, z_offset=0.0)
++    print(straight_line)
++    control = [
++        straight_line
++    ]
++    joint_id = np.array([
++        # head
++        15,
++    ])
++
++    control = control[index:index+1]
++    text = text[index:index+1]
++
++    # normalize
++    control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
++    for i in range(len(control)):
++        mask = control[i].sum(-1) != 0
++        control_ = (control[i] - raw_mean.reshape(22, 1, 3)[joint_id[i]]) / raw_std.reshape(22, 1, 3)[joint_id[i]]
++        control_ = control_ * mask[..., np.newaxis]
++        control_full[i, :, joint_id[i], :] = control_
++
++    control_full = control_full.reshape((len(control), n_frames, -1))
++
++    return text, control_full, joint_id
++
++def hole_in_the_wall(n_frames=120, raw_mean=None, raw_std=None, index=0):
++    text = [
++        # foot
++        'A person plays football',
++    ]
++    start_frame = 20
++    control = [
++        # right foot, left wrist, left wrist
++        [
++            specify_points(n_frames, [[start_frame, 0, 0, 1.5]]),
++            specify_points(n_frames, [[start_frame, -0.2, 0.3, 1.5]]),
++            specify_points(n_frames, [[start_frame, 0.5, 1.3, 1.5]])
++        ],
++    ]
++    joint_id = np.array([
++        # right foot, left wrist, left wrist
++        [10, 11, 20]
++        ])
++    control = np.stack(control)
++
++    # extend controls
++    control[0, 0, start_frame:190] = control[0, 0, start_frame]
++    control[0, 1, start_frame:190] = control[0, 1, start_frame]
++    control[0, 2, start_frame:190] = control[0, 2, start_frame]
++    #print(control[0, 0, start_frame-10:190])
++    #print(control[0, 1, start_frame-10:190])
++    #print(control[0, 2, start_frame-10:190])
++    #print(control.shape)
++
++    control = control[index:index+1]
++    text = text[index:index+1]
++    #joint_id = joint_id[index:index+1]
++
++    # normalize
++    control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
++    for i in range(len(control)):
++        mask = control[i].sum(-1) != 0
++        control_ = (control[i] - raw_mean.reshape(22, 1, 3)[joint_id[i]]) / raw_std.reshape(22, 1, 3)[joint_id[i]]
++        control_ = control_ * mask[..., np.newaxis]
++        control_full[i, :, joint_id[i], :] = control_
++
++    control_full = control_full.reshape((len(control), n_frames, -1))
++    return text, control_full, joint_id
+ 
+ def collate_all(n_frames, dataset):
+     if dataset == 'humanml':
+@@ -657,6 +731,7 @@ def collate_all(n_frames, dataset):
+     raw_mean = np.load(pjoin(spatial_norm_path, 'Mean_raw.npy'))
+     raw_std = np.load(pjoin(spatial_norm_path, 'Std_raw.npy'))
+ 
++
+     texts0, hints0, _ = pelvis_dense_text_control_example(n_frames, raw_mean, raw_std, index=0)
+     texts1, hints1, _ = pelvis_sparse_text_control_example(n_frames, raw_mean, raw_std, index=0)
+     texts2, hints2, _ = wrist_text_control_example(n_frames, raw_mean, raw_std, index=0)
+@@ -667,5 +742,9 @@ def collate_all(n_frames, dataset):
+     texts6, hints6, _ = combination_text_control_example(n_frames, raw_mean, raw_std, index=0)
+     texts7, hints7, _ = motion_inbetweening(n_frames, raw_mean, raw_std, index=0)
+     texts = texts0 + texts1 + texts2 + texts3 + texts4 + texts5 + texts6 + texts7
++    print("#############################")
++    print(texts)
++    print(type(texts))
+     hints = np.concatenate([hints0, hints1, hints2, hints3, hints4, hints5, hints6, hints7], axis=0)
+-    return texts, hints
+\ No newline at end of file
++
++    return texts, hints
+diff --git a/visualize/vis_utils.py b/visualize/vis_utils.py
+index fc4efe9..5d31865 100644
+--- a/visualize/vis_utils.py
++++ b/visualize/vis_utils.py
+@@ -13,6 +13,14 @@ class npy2obj:
+         if self.npy_path.endswith('.npz'):
+             self.motions = self.motions['arr_0']
+         self.motions = self.motions[None][0]
++        print("--------------------------------------------------")
++        print(type(self.motions))
++        print(self.motions.keys())
++        for k in self.motions.keys():
++            print(f'key: {k}')
++            print(self.motions[k])
++            print()
++        print("--------------------------------------------------")
+         self.rot2xyz = Rotation2xyz(device='cpu')
+         self.faces = self.rot2xyz.smpl_model.faces
+         self.bs, self.njoints, self.nfeats, self.nframes = self.motions['motion'].shape
+@@ -57,7 +65,7 @@ class npy2obj:
+         with open(save_path, 'w') as fw:
+             mesh.export(fw, 'obj')
+         return save_path
+-    
++
+     def save_npy(self, save_path):
+         data_dict = {
+             'motion': self.motions['motion'][0, :, :, :self.real_num_frames],
