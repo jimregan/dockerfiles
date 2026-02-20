@@ -1,79 +1,27 @@
 diff --git a/data_loaders/get_data.py b/data_loaders/get_data.py
-index 48e3496..1410eca 100644
+index 48e3496..30e851d 100644
 --- a/data_loaders/get_data.py
 +++ b/data_loaders/get_data.py
-@@ -23,7 +23,7 @@ def get_collate_fn(name, hml_mode='train'):
-         return all_collate
+@@ -41,4 +41,4 @@ def get_dataset_loader(name, batch_size, num_frames, split='train', hml_mode='tr
+         num_workers=8, drop_last=True, collate_fn=collate,
+     )
  
- 
--def get_dataset(name, num_frames, split='train', hml_mode='train', control_joint=0, density=100):
-+def get_dataset(name, num_frames, split='train', hml_mode='train', control_joint=0, density=100):    
-     DATA = get_dataset_class(name)
-     if name in ["humanml", "kit"]:
-         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode, control_joint=control_joint, density=density)
-diff --git a/data_loaders/humanml/common/quaternion.py b/data_loaders/humanml/common/quaternion.py
-index e2daa00..8484852 100644
---- a/data_loaders/humanml/common/quaternion.py
-+++ b/data_loaders/humanml/common/quaternion.py
-@@ -318,9 +318,9 @@ def quaternion_to_cont6d(quaternions):
- 
- 
- def cont6d_to_matrix(cont6d):
--    assert cont6d.shape[-1] == 6, "The last dimension must be 6"
-+    assert cont6d.shape[-1] == 6, "The last dimension must be 6"    
-     x_raw = cont6d[..., 0:3]
--    y_raw = cont6d[..., 3:6]
-+    y_raw = cont6d[..., 3:6]      
- 
-     x = x_raw / torch.norm(x_raw, dim=-1, keepdim=True)
-     z = torch.cross(x, y_raw, dim=-1)
+-    return loader
+\ No newline at end of file
++    return loader
 diff --git a/data_loaders/humanml/data/dataset.py b/data_loaders/humanml/data/dataset.py
-index 9e2353e..79504cc 100644
+index 9e2353e..9869fee 100644
 --- a/data_loaders/humanml/data/dataset.py
 +++ b/data_loaders/humanml/data/dataset.py
-@@ -44,15 +44,16 @@ class Text2MotionDatasetV2(data.Dataset):
+@@ -44,6 +44,7 @@ class Text2MotionDatasetV2(data.Dataset):
  
          new_name_list = []
          length_list = []
 +        print(f'dataset size: {len(id_list)}')
          for name in tqdm(id_list):
--            try:
--                motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
--                if (len(motion)) < min_motion_len or (len(motion) >= 200):
-+            try:                
-+                motion = np.load(pjoin(opt.motion_dir, name + '.npy'))                
-+                if (len(motion)) < min_motion_len or (len(motion) >= 200):                    
-                     continue
-                 text_data = []
-                 flag = False
--                with cs.open(pjoin(opt.text_dir, name + '.txt')) as f:
--                    for line in f.readlines():
-+                with cs.open(pjoin(opt.text_dir, name + '.txt')) as f:                    
-+                    for line in f.readlines():                        
-                         text_dict = {}
-                         line_split = line.strip().split('#')
-                         caption = line_split[0]
-@@ -64,10 +65,10 @@ class Text2MotionDatasetV2(data.Dataset):
- 
-                         text_dict['caption'] = caption
-                         text_dict['tokens'] = tokens
--                        if f_tag == 0.0 and to_tag == 0.0:
-+                        if f_tag == 0.0 and to_tag == 0.0:                            
-                             flag = True
-                             text_data.append(text_dict)
--                        else:
-+                        else:                            
-                             try:
-                                 n_motion = motion[int(f_tag*20) : int(to_tag*20)]
-                                 if (len(n_motion)) < min_motion_len or (len(n_motion) >= 200):
-@@ -85,15 +86,19 @@ class Text2MotionDatasetV2(data.Dataset):
-                                 print(line_split[2], line_split[3], f_tag, to_tag, name)
-                                 # break
- 
--                if flag:
-+                if flag:                    
-                     data_dict[name] = {'motion': motion,
-                                        'length': len(motion),
+             try:
+                 motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
+@@ -91,9 +92,13 @@ class Text2MotionDatasetV2(data.Dataset):
                                         'text': text_data}
                      new_name_list.append(name)
                      length_list.append(len(motion))
@@ -81,14 +29,40 @@ index 9e2353e..79504cc 100644
 +            except Exception as e:
 +                print(e)
                  pass
--
-+        
-+        print(f'new_name_list: {new_name_list[:10]}')        
+ 
++        print(f'new_name_list: {new_name_list[:10]}')
 +        print(f'length_list: {length_list[:10]}')
 +        print("----------------------")
          name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
  
          self.mean = mean
+@@ -143,7 +148,7 @@ class Text2MotionDatasetV2(data.Dataset):
+         joints = (joints - self.raw_mean.reshape(n_joints, 3)) / self.raw_std.reshape(n_joints, 3)
+         joints = joints * mask_seq
+         return joints
+-    
++
+     def random_mask(self, joints, n_joints=22, density=1):
+         if n_joints == 22:
+             # humanml3d
+@@ -225,7 +230,7 @@ class Text2MotionDatasetV2(data.Dataset):
+         joints = (joints - self.raw_mean.reshape(n_joints, 3)) / self.raw_std.reshape(n_joints, 3)
+         joints = joints * mask_seq
+         return joints
+-        
++
+     def __len__(self):
+         return len(self.data_dict) - self.pointer
+ 
+@@ -382,7 +387,7 @@ class TextOnlyDataset(data.Dataset):
+ class HumanML3D(data.Dataset):
+     def __init__(self, mode, datapath='./dataset/humanml_opt.txt', split="train", control_joint=0, density=100, **kwargs):
+         self.mode = mode
+-        
++
+         self.dataset_name = 't2m'
+         self.dataname = 't2m'
+ 
 @@ -398,6 +403,8 @@ class HumanML3D(data.Dataset):
          opt.checkpoints_dir = pjoin(abs_base_path, opt.checkpoints_dir)
          opt.data_root = pjoin(abs_base_path, opt.data_root)
@@ -98,37 +72,63 @@ index 9e2353e..79504cc 100644
          opt.meta_dir = './dataset'
          self.opt = opt
          print('Loading dataset %s ...' % opt.dataset_name)
-@@ -438,5 +445,5 @@ class HumanML3D(data.Dataset):
- 
+@@ -439,4 +446,4 @@ class HumanML3D(data.Dataset):
  # A wrapper class for t2m original dataset for MDM purposes
  class KIT(HumanML3D):
--    def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):
-+    def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):        
-         super(KIT, self).__init__(mode, datapath, split, **kwargs)
+     def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):
+-        super(KIT, self).__init__(mode, datapath, split, **kwargs)
 \ No newline at end of file
++        super(KIT, self).__init__(mode, datapath, split, **kwargs)
 diff --git a/diffusion/gaussian_diffusion.py b/diffusion/gaussian_diffusion.py
-index 60e03b8..bcfb392 100644
+index 60e03b8..434c03e 100644
 --- a/diffusion/gaussian_diffusion.py
 +++ b/diffusion/gaussian_diffusion.py
 @@ -429,6 +429,16 @@ class GaussianDiffusion:
              x_ = x_ * self.std + self.mean
              n_joints = 22 if x_.shape[-1] == 263 else 21
              joint_pos = recover_from_ric(x_, n_joints)
-+            
-+            """ print("=====================================")            
-+            r_wrist_pos = joint_pos[0, :, 21]            
-+            r_elbow_pos = joint_pos[0, :, 19]            
++
++            """ print("=====================================")
++            r_wrist_pos = joint_pos[0, :, 21]
++            r_elbow_pos = joint_pos[0, :, 19]
 +            print(r_wrist_pos)
 +            print(r_elbow_pos)
-+            direction = r_wrist_pos-r_elbow_pos            
-+            direction = torch.cat((direction[:, :1], direction[:, 2:]), dim=1)              
++            direction = r_wrist_pos-r_elbow_pos
++            direction = torch.cat((direction[:, :1], direction[:, 2:]), dim=1)
 +            print(direction) """
 +
              if n_joints == 21:
                  joint_pos = joint_pos * 0.001
                  hint = hint * 0.001
+@@ -454,7 +464,7 @@ class GaussianDiffusion:
+         n_joint = 22 if x.shape[1] == 263 else 21
+         model_log_variance = _extract_into_tensor(self.posterior_log_variance_clipped, t, x.shape)
+         model_variance = torch.exp(model_log_variance)
+-        
++
+         if model_variance[0, 0, 0, 0] < min_variance:
+             model_variance = min_variance
+ 
+@@ -484,7 +494,7 @@ class GaussianDiffusion:
+         for m in mask_hint:
+             joint_id = torch.nonzero(m.sum(0).squeeze(-1) != 0).squeeze(1)
+             joint_ids.append(joint_id)
+-        
++
+         if not train:
+             scale = self.calc_grad_scale(mask_hint)
+ 
+@@ -495,7 +505,7 @@ class GaussianDiffusion:
+             if t[0] >= t_stopgrad:
+                 x = x - scale * grad
+         return x.detach()
+-    
++
+     def p_sample(
+         self,
+         model,
 diff --git a/sample/generate.py b/sample/generate.py
-index 711288e..5038c19 100644
+index 711288e..225872d 100644
 --- a/sample/generate.py
 +++ b/sample/generate.py
 @@ -17,12 +17,14 @@ import data_loaders.humanml.utils.paramUtil as paramUtil
@@ -155,14 +155,14 @@ index 711288e..5038c19 100644
          out_path = os.path.join(os.path.dirname(args.model_path),
 -                                'samples_{}_{}_seed{}'.format(name, niter, args.seed))
 +                                'joint1_{}_{}_seed{}'.format(name, niter, args.seed))
-+        """        
++        """
 +        print(f'output name: {args.output_name}')
 +        out_path = os.path.join(os.path.dirname(args.model_path),
 +                                '{}_{}_{}'.format(args.output_name, name, args.seed))
          if args.text_prompt != '':
              out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
  
-@@ -66,9 +73,14 @@ def main():
+@@ -66,6 +73,11 @@ def main():
      # (specify through the --seed flag)
      args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
  
@@ -172,28 +172,11 @@ index 711288e..5038c19 100644
 +    print("---------------------------------------")
 +
      print('Loading dataset...')
--    data = load_dataset(args, max_frames, n_frames)
--    total_num_samples = args.num_samples * args.num_repetitions
-+    data = load_dataset(args, max_frames, n_frames)    
-+    total_num_samples = args.num_samples * args.num_repetitions    
- 
-     print("Creating model and diffusion...")
-     model, diffusion = create_model_and_diffusion(args, data)
-@@ -112,7 +124,7 @@ def main():
-             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
- 
-         sample_fn = diffusion.p_sample_loop
--
-+        
-         sample = sample_fn(
-             model,
-             (args.batch_size, model.njoints, model.nfeats, n_frames),
-@@ -124,9 +136,12 @@ def main():
-             dump_steps=None,
-             noise=None,
+     data = load_dataset(args, max_frames, n_frames)
+     total_num_samples = args.num_samples * args.num_repetitions
+@@ -126,7 +138,10 @@ def main():
              const_noise=False,
--        )
-+        )        
+         )
  
 +        print(type(sample))
 +        print(sample.shape)
@@ -202,65 +185,43 @@ index 711288e..5038c19 100644
          # Recover XYZ *positions* from HumanML3D vector representation
          if model.data_rep == 'hml_vec':
              n_joints = 22 if sample.shape[1] == 263 else 21
-@@ -166,7 +181,7 @@ def main():
-                 hint = hint.view(hint.shape[0], hint.shape[1], n_joints, 3)
-                 all_hint_for_vis.append(hint.data.cpu().numpy())
- 
--        all_motions.append(sample.cpu().numpy())
-+        all_motions.append(sample.cpu().numpy())                
-         all_lengths.append(model_kwargs['y']['lengths'].cpu().numpy())
- 
-         print(f"created {len(all_motions) * args.batch_size} samples")
-@@ -204,7 +219,7 @@ def main():
- 
-     sample_files = []
-     num_samples_in_out_file = 7
--
-+    
-     sample_print_template, row_print_template, all_print_template, \
-     sample_file_template, row_file_template, all_file_template = construct_template_variables(args.unconstrained)
- 
-@@ -212,7 +227,7 @@ def main():
-         rep_files = []
-         for rep_i in range(args.num_repetitions):
-             caption = all_text[rep_i*args.batch_size + sample_i]
--            length = all_lengths[rep_i*args.batch_size + sample_i]
-+            length = all_lengths[rep_i*args.batch_size + sample_i]            
-             motion = all_motions[rep_i*args.batch_size + sample_i].transpose(2, 0, 1)[:length]
-             if 'hint' in model_kwargs['y']:
-                 hint = all_hint_for_vis[rep_i*args.batch_size + sample_i]
-@@ -221,7 +236,20 @@ def main():
+@@ -179,7 +194,7 @@ def main():
+     if 'hint' in model_kwargs['y']:
+         all_hint = np.concatenate(all_hint, axis=0)[:total_num_samples]
+         all_hint_for_vis = np.concatenate(all_hint_for_vis, axis=0)[:total_num_samples]
+-    
++
+     if len(all_hint) != 0:
+         from utils.simple_eval import simple_eval
+         results = simple_eval(all_motions, all_hint, n_joints)
+@@ -221,6 +236,19 @@ def main():
              save_file = sample_file_template.format(sample_i, rep_i)
              print(sample_print_template.format(caption, sample_i, rep_i, save_file))
              animation_save_path = os.path.join(out_path, save_file)
--            plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps, hint=hint)
 +            """
 +            print("#############################")
 +            print(f'animation path: {animation_save_path}')
-+            print(f'skeleton: {skeleton}')            
++            print(f'skeleton: {skeleton}')
 +            print("motion")
 +            print(motion)
-+            print(motion.shape)            
++            print(motion.shape)
 +            print(f'dataset: {args.dataset}')
 +            print(f'title: {caption}')
 +            print(f'fps: {fps}')
 +            print(f'hint: {hint}')
-+            print(hint.shape)            
-+            """            
-+            plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps, hint=hint)            
++            print(hint.shape)
++            """
+             plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps, hint=hint)
              # Credit for visualization: https://github.com/EricGuo5513/text-to-motion
              rep_files.append(animation_save_path)
- 
 diff --git a/train/training_loop.py b/train/training_loop.py
-index a9dea7b..a6510a1 100644
+index a9dea7b..e91d947 100644
 --- a/train/training_loop.py
 +++ b/train/training_loop.py
-@@ -100,7 +100,8 @@ class TrainLoop:
-             )
+@@ -101,6 +101,7 @@ class TrainLoop:
              self.opt.load_state_dict(state_dict)
  
--    def run_loop(self):
-+    def run_loop(self):        
+     def run_loop(self):
 +        print(f'Number of epochs: {self.num_epochs}')
  
          for epoch in range(self.num_epochs):
@@ -288,17 +249,99 @@ index ca473e8..d7badce 100644
  
  def add_edit_options(parser):
 diff --git a/utils/text_control_example.py b/utils/text_control_example.py
-index 53d54eb..3751ee9 100644
+index 53d54eb..2efe749 100644
 --- a/utils/text_control_example.py
 +++ b/utils/text_control_example.py
-@@ -336,6 +336,7 @@ def head_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+@@ -30,7 +30,7 @@ def unnatural_text_control_example(n_frames=120, raw_mean=None, raw_std=None, in
+     ]
  
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -69,15 +69,15 @@ def motion_inbetweening(n_frames=120, raw_mean=None, raw_std=None, index=0):
+     n_joints = 22 if motion.shape[-1] == 263 else 21
+     joints = recover_from_ric(torch.from_numpy(motion).float(), n_joints)
+     joints = joints.numpy()
+-        
++
+     # normalize
+     joints = (joints - raw_mean.reshape(1, 22, 3)) / raw_std.reshape(1, 22, 3)
+-        
++
+     mask = np.zeros((n_frames, 22, 1))
+     control_joints = [0, 10, 11, 15, 20, 21]
+     for j in control_joints:
+         mask[[0, -1], j] = 1
+-        
++
+     control = joints * mask
+     control = control.reshape((n_frames, -1))
+     control_full.append(control)
+@@ -163,7 +163,7 @@ def pelvis_dense_text_control_example(n_frames=120, raw_mean=None, raw_std=None,
+         circle(n_frames, r=0.8, indices=[0, 2], x_offset=0.0, y_offset=0.9, z_offset=0.0),
+     ]
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -205,7 +205,7 @@ def pelvis_sparse_text_control_example(n_frames=120, raw_mean=None, raw_std=None
+     ]
+ 
+     joint_id = np.array([
+-        # pelvis 
++        # pelvis
+         0,
+         ])
+     control = np.stack(control)
+@@ -269,7 +269,7 @@ def wrist_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=
+         circle(n_frames, r=0.01, indices=[0, 2], x_offset=0.5, y_offset=1.6, z_offset=0.5),
+     ]
+     joint_id = np.array([
+-        # wrist 
++        # wrist
+         21, 21, 21, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
+         ])
+     control = np.stack(control)
+@@ -326,7 +326,7 @@ def head_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+         specify_points(n_frames, [[90, 0, 0.8, 1.0]]),
+     ]
+     joint_id = np.array([
+-        # head 
++        # head
+         15,
+         ])
+     control = np.stack(control)
+@@ -337,6 +337,7 @@ def head_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
      control = control[index:index+1]
      text = text[index:index+1]
-+    
  
++
      # normalize
      control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
+     for i in range(len(control)):
+@@ -368,7 +369,7 @@ def foot_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+         specify_points(n_frames, [[30, 0, 1.0, 1.0]]),
+     ]
+     joint_id = np.array([
+-        # right foot 
++        # right foot
+         10, 11, 11, 11
+         ])
+     control = np.stack(control)
+@@ -386,7 +387,7 @@ def foot_text_control_example(n_frames=120, raw_mean=None, raw_std=None, index=0
+     control = control[index:index+1]
+     text = text[index:index+1]
+     joint_id = joint_id[index:index+1]
+-    
++
+     # normalize
+     control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
+     for i in range(len(control)):
 @@ -646,6 +647,79 @@ def sample_points_forward_back_verticel(n):
          points.append((x, y))
      return points
@@ -314,7 +357,7 @@ index 53d54eb..3751ee9 100644
 +        straight_line
 +    ]
 +    joint_id = np.array([
-+        # head 
++        # head
 +        15,
 +    ])
 +
@@ -330,42 +373,42 @@ index 53d54eb..3751ee9 100644
 +        control_full[i, :, joint_id[i], :] = control_
 +
 +    control_full = control_full.reshape((len(control), n_frames, -1))
-+    
++
 +    return text, control_full, joint_id
 +
 +def hole_in_the_wall(n_frames=120, raw_mean=None, raw_std=None, index=0):
 +    text = [
 +        # foot
-+        'A person plays football',        
++        'A person plays football',
 +    ]
 +    start_frame = 20
-+    control = [        
-+        # right foot, left wrist, left wrist 
++    control = [
++        # right foot, left wrist, left wrist
 +        [
 +            specify_points(n_frames, [[start_frame, 0, 0, 1.5]]),
 +            specify_points(n_frames, [[start_frame, -0.2, 0.3, 1.5]]),
 +            specify_points(n_frames, [[start_frame, 0.5, 1.3, 1.5]])
-+        ],                    
++        ],
 +    ]
 +    joint_id = np.array([
-+        # right foot, left wrist, left wrist  
++        # right foot, left wrist, left wrist
 +        [10, 11, 20]
 +        ])
 +    control = np.stack(control)
 +
-+    # extend controls    
++    # extend controls
 +    control[0, 0, start_frame:190] = control[0, 0, start_frame]
 +    control[0, 1, start_frame:190] = control[0, 1, start_frame]
 +    control[0, 2, start_frame:190] = control[0, 2, start_frame]
 +    #print(control[0, 0, start_frame-10:190])
 +    #print(control[0, 1, start_frame-10:190])
 +    #print(control[0, 2, start_frame-10:190])
-+    #print(control.shape)    
++    #print(control.shape)
 +
 +    control = control[index:index+1]
 +    text = text[index:index+1]
 +    #joint_id = joint_id[index:index+1]
-+    
++
 +    # normalize
 +    control_full = np.zeros((len(control), n_frames, 22, 3)).astype(np.float32)
 +    for i in range(len(control)):
@@ -383,7 +426,7 @@ index 53d54eb..3751ee9 100644
      raw_mean = np.load(pjoin(spatial_norm_path, 'Mean_raw.npy'))
      raw_std = np.load(pjoin(spatial_norm_path, 'Std_raw.npy'))
  
-+    
++
      texts0, hints0, _ = pelvis_dense_text_control_example(n_frames, raw_mean, raw_std, index=0)
      texts1, hints1, _ = pelvis_sparse_text_control_example(n_frames, raw_mean, raw_std, index=0)
      texts2, hints2, _ = wrist_text_control_example(n_frames, raw_mean, raw_std, index=0)
@@ -395,38 +438,18 @@ index 53d54eb..3751ee9 100644
 +    print(texts)
 +    print(type(texts))
      hints = np.concatenate([hints0, hints1, hints2, hints3, hints4, hints5, hints6, hints7], axis=0)
-+
-     return texts, hints
+-    return texts, hints
 \ No newline at end of file
-diff --git a/visualize/render_mesh.py b/visualize/render_mesh.py
-index 94ace42..0b769ac 100644
---- a/visualize/render_mesh.py
-+++ b/visualize/render_mesh.py
-@@ -13,7 +13,7 @@ if __name__ == '__main__':
-     params = parser.parse_args()
- 
-     assert params.input_path.endswith('.mp4')
--    parsed_name = os.path.basename(params.input_path).replace('.mp4', '').replace('sample', '').replace('rep', '')
-+    parsed_name = os.path.basename(params.input_path).replace('.mp4', '').replace('sample', '').replace('rep', '')    
-     sample_i, rep_i = [int(e) for e in parsed_name.split('_')]
-     npy_path = os.path.join(os.path.dirname(params.input_path), 'results.npy')
-     out_npy_path = params.input_path.replace('.mp4', '_smpl_params.npy')
++
++    return texts, hints
 diff --git a/visualize/vis_utils.py b/visualize/vis_utils.py
-index fc4efe9..16c91d0 100644
+index fc4efe9..5d31865 100644
 --- a/visualize/vis_utils.py
 +++ b/visualize/vis_utils.py
-@@ -9,10 +9,18 @@ from visualize.simplify_loc2rot import joints2smpl
- class npy2obj:
-     def __init__(self, npy_path, sample_idx, rep_idx, device=0, cuda=True):
-         self.npy_path = npy_path
--        self.motions = np.load(self.npy_path, allow_pickle=True)
--        if self.npy_path.endswith('.npz'):
--            self.motions = self.motions['arr_0']
--        self.motions = self.motions[None][0]
-+        self.motions = np.load(self.npy_path, allow_pickle=True)        
-+        if self.npy_path.endswith('.npz'):            
-+            self.motions = self.motions['arr_0']            
-+        self.motions = self.motions[None][0]                
+@@ -13,6 +13,14 @@ class npy2obj:
+         if self.npy_path.endswith('.npz'):
+             self.motions = self.motions['arr_0']
+         self.motions = self.motions[None][0]
 +        print("--------------------------------------------------")
 +        print(type(self.motions))
 +        print(self.motions.keys())
@@ -438,12 +461,12 @@ index fc4efe9..16c91d0 100644
          self.rot2xyz = Rotation2xyz(device='cpu')
          self.faces = self.rot2xyz.smpl_model.faces
          self.bs, self.njoints, self.nfeats, self.nframes = self.motions['motion'].shape
-@@ -22,7 +30,7 @@ class npy2obj:
-         self.rep_idx = rep_idx
-         self.absl_idx = self.rep_idx*self.total_num_samples + self.sample_idx
-         self.num_frames = self.motions['motion'][self.absl_idx].shape[-1]
--        self.j2s = joints2smpl(num_frames=self.num_frames, device_id=device, cuda=cuda)
-+        self.j2s = joints2smpl(num_frames=self.num_frames, device_id=device, cuda=cuda)        
-         self.hint = self.motions['hint'][self.absl_idx]
- 
-         if self.nfeats == 3:
+@@ -57,7 +65,7 @@ class npy2obj:
+         with open(save_path, 'w') as fw:
+             mesh.export(fw, 'obj')
+         return save_path
+-    
++
+     def save_npy(self, save_path):
+         data_dict = {
+             'motion': self.motions['motion'][0, :, :, :self.real_num_frames],
