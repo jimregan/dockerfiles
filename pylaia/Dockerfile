@@ -6,8 +6,16 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyLaia from source to avoid old torch version pins on PyPI
+# Install PyLaia's non-torch dependencies first, then PyLaia itself without deps
+# to avoid conflicts with the old torchaudio/torchvision pins
 RUN pip install --no-cache-dir \
+    pytorch-lightning \
+    jsonargparse[signatures] \
+    editdistance \
+    pillow \
+    scipy
+
+RUN pip install --no-cache-dir --no-deps \
     "git+https://gitlab.teklia.com/atr/pylaia.git"
 
 WORKDIR /data
