@@ -7,13 +7,11 @@ Produces for each split:
   - <split>.txt          : space-separated character transcriptions, one per line
   - <split>_text.txt     : plain text transcriptions for evaluation, one per line
   - syms.txt             : character-to-index mapping (generated from train split only)
-  - images/train|val|test/ : symlinks to source images (or copies with --copy)
 
 Word spaces in transcriptions are represented by the special symbol <space>.
 """
 
 import argparse
-import shutil
 from collections import Counter
 from pathlib import Path
 
@@ -44,56 +42,33 @@ def read_split(split_file):
                 continue
             filename, transcription = parts
             stem = Path(filename).stem
-            entries.append((stem, filename, transcription))
+            entries.append((stem, transcription))
     return entries
 
 
-def write_split(entries, image_dir, outdir, split_name, copy):
+def write_split(entries, outdir, split_name):
     ids_path = outdir / f"{split_name}_ids.txt"
     tok_path = outdir / f"{split_name}.txt"
     text_path = outdir / f"{split_name}_text.txt"
-    img_outdir = outdir / "images" / split_name
-    img_outdir.mkdir(parents=True, exist_ok=True)
-
-    missing = []
 
     with open(ids_path, "w", encoding="utf-8") as f_ids, \
          open(tok_path, "w", encoding="utf-8") as f_tok, \
          open(text_path, "w", encoding="utf-8") as f_text:
-        for stem, filename, transcription in entries:
-            src = (image_dir / filename).resolve()
-            if not src.exists():
-                missing.append(filename)
-                continue
-
-            dst = img_outdir / filename
-            if not dst.exists():
-                if copy:
-                    shutil.copy2(src, dst)
-                else:
-                    dst.symlink_to(src)
-
+        for stem, transcription in entries:
             tokens = transcription_to_chars(transcription)
             f_ids.write(stem + "\n")
             f_tok.write(" ".join(tokens) + "\n")
             f_text.write(transcription + "\n")
 
-    print(f"{split_name:6s}: {len(entries) - len(missing)} lines")
-    print(f"         ids     -> {ids_path}")
-    print(f"         tokens  -> {tok_path}")
-    print(f"         text    -> {text_path}")
-    print(f"         images  -> {img_outdir}")
-    if missing:
-        print(f"         WARNING: {len(missing)} missing images:")
-        for m in missing[:10]:
-            print(f"           {m}")
-        if len(missing) > 10:
-            print(f"           ... and {len(missing) - 10} more")
+    print(f"{split_name:6s}: {len(entries)} lines")
+    print(f"         ids    -> {ids_path}")
+    print(f"         tokens -> {tok_path}")
+    print(f"         text   -> {text_path}")
 
 
 def build_syms(entries):
     chars = Counter()
-    for _, _, transcription in entries:
+    for _, transcription in entries:
         chars.update(transcription.replace(" ", ""))
     return sorted(chars.keys())
 
@@ -114,15 +89,11 @@ def write_syms(symbols, outdir):
 
 def main():
     parser = argparse.ArgumentParser(description="Prepare PyLaia training data")
-    parser.add_argument("image_dir", help="Directory containing images")
     parser.add_argument("splits_dir", help="Directory containing train/val/test split files")
     parser.add_argument("--outdir", required=True,
                         help="Output directory for PyLaia data files")
-    parser.add_argument("--copy", action="store_true",
-                        help="Copy images instead of symlinking (default: symlink)")
     args = parser.parse_args()
 
-    image_dir = Path(args.image_dir)
     splits_dir = Path(args.splits_dir)
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -143,7 +114,7 @@ def main():
     write_syms(symbols, outdir)
 
     for split_name, entries in all_entries.items():
-        write_split(entries, image_dir, outdir, split_name, args.copy)
+        write_split(entries, outdir, split_name)
         print()
 
     print("Done.")
