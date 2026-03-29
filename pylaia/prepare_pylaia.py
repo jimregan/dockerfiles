@@ -7,8 +7,7 @@ Produces for each split:
   - <split>.txt          : space-separated character transcriptions, one per line
   - <split>_text.txt     : plain text transcriptions for evaluation, one per line
   - syms.txt             : character-to-index mapping (generated from train split only)
-
-Images are copied into images/train/, images/val/, images/test/ subdirectories.
+  - images/train|val|test/ : symlinks to source images (or copies with --copy)
 
 Word spaces in transcriptions are represented by the special symbol <space>.
 """
@@ -23,7 +22,6 @@ SPACE_SYMBOL = "<space>"
 
 
 def transcription_to_chars(text):
-    """Convert a transcription string to a list of PyLaia character tokens."""
     tokens = []
     for ch in text:
         if ch == " ":
@@ -34,7 +32,6 @@ def transcription_to_chars(text):
 
 
 def read_split(split_file):
-    """Read a split file, return list of (stem, filename, transcription) tuples."""
     entries = []
     with open(split_file, encoding="utf-8") as f:
         for lineno, line in enumerate(f, 1):
@@ -51,14 +48,12 @@ def read_split(split_file):
     return entries
 
 
-def write_split(entries, image_dir, outdir, split_name, copy_images):
+def write_split(entries, image_dir, outdir, split_name, copy):
     ids_path = outdir / f"{split_name}_ids.txt"
     tok_path = outdir / f"{split_name}.txt"
     text_path = outdir / f"{split_name}_text.txt"
     img_outdir = outdir / "images" / split_name
-
-    if copy_images:
-        img_outdir.mkdir(parents=True, exist_ok=True)
+    img_outdir.mkdir(parents=True, exist_ok=True)
 
     missing = []
 
@@ -66,13 +61,17 @@ def write_split(entries, image_dir, outdir, split_name, copy_images):
          open(tok_path, "w", encoding="utf-8") as f_tok, \
          open(text_path, "w", encoding="utf-8") as f_text:
         for stem, filename, transcription in entries:
-            src = image_dir / filename
+            src = (image_dir / filename).resolve()
             if not src.exists():
                 missing.append(filename)
                 continue
 
-            if copy_images:
-                shutil.copy2(src, img_outdir / filename)
+            dst = img_outdir / filename
+            if not dst.exists():
+                if copy:
+                    shutil.copy2(src, dst)
+                else:
+                    dst.symlink_to(src)
 
             tokens = transcription_to_chars(transcription)
             f_ids.write(stem + "\n")
@@ -83,8 +82,7 @@ def write_split(entries, image_dir, outdir, split_name, copy_images):
     print(f"         ids     -> {ids_path}")
     print(f"         tokens  -> {tok_path}")
     print(f"         text    -> {text_path}")
-    if copy_images:
-        print(f"         images -> {img_outdir}")
+    print(f"         images  -> {img_outdir}")
     if missing:
         print(f"         WARNING: {len(missing)} missing images:")
         for m in missing[:10]:
@@ -94,7 +92,6 @@ def write_split(entries, image_dir, outdir, split_name, copy_images):
 
 
 def build_syms(entries):
-    """Build character set from training entries, return sorted list of symbols."""
     chars = Counter()
     for _, _, transcription in entries:
         chars.update(transcription.replace(" ", ""))
@@ -121,8 +118,8 @@ def main():
     parser.add_argument("splits_dir", help="Directory containing train/val/test split files")
     parser.add_argument("--outdir", required=True,
                         help="Output directory for PyLaia data files")
-    parser.add_argument("--copy-images", action="store_true",
-                        help="Copy images into images/train|val|test/ subdirectories")
+    parser.add_argument("--copy", action="store_true",
+                        help="Copy images instead of symlinking (default: symlink)")
     args = parser.parse_args()
 
     image_dir = Path(args.image_dir)
@@ -146,7 +143,7 @@ def main():
     write_syms(symbols, outdir)
 
     for split_name, entries in all_entries.items():
-        write_split(entries, image_dir, outdir, split_name, args.copy_images)
+        write_split(entries, image_dir, outdir, split_name, args.copy)
         print()
 
     print("Done.")
