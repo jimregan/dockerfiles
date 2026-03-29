@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "kraken==6.0.3"
+RUN pip install --no-cache-dir "kraken==6.0.3" albumentations
 
 WORKDIR /data
 
