@@ -8,12 +8,11 @@ common:
   experiment_dirname: experiment-dataset
 logging:
   filepath: pylaia_training.log
-scheduler:
-  active: true
 train:
   augment_training: true
   early_stopping_patience: 80
 trainer:
-  auto_select_gpus: true
+  devices: 0
   gpus: 1
+  auto_select_gpus: true
   max_epochs: 600
