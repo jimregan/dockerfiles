@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir \
     "pytorch-lightning>=1.4,<1.9" \
     jsonargparse[signatures] \
     editdistance \
+    textdistance \
     imagesize \
     prettytable \
     pillow \
