@@ -1,0 +1,18 @@
+syms: /data/syms.txt
+img_dirs:
+  - /images/
+tr_txt_table: /path/to/train.txt
+va_txt_table: /path/to/val.txt
+common:
+  experiment_dirname: experiment-dataset
+logging:
+  filepath: pylaia_training.log
+scheduler:
+  active: true
+train:
+  augment_training: true
+  early_stopping_patience: 80
+trainer:
+  auto_select_gpus: true
+  gpus: 1
+  max_epochs: 600
