@@ -1,6 +1,6 @@
 syms: /data/syms.txt
 img_dirs:
-  - /images/
+  - /data/images/
 tr_txt_table: /path/to/train.txt
 va_txt_table: /path/to/val.txt
 common:
