@@ -3,14 +3,18 @@
 Prepare PyLaia training data from split files.
 
 Produces for each split:
-  - <split>.ids       : image stems, one per line
-  - <split>.gt.txt    : space-separated character transcriptions, one per line
-  - syms.txt          : character-to-index mapping (generated from train split only)
+  - <split>_ids.txt      : image stems, one per line
+  - <split>.txt          : space-separated character transcriptions, one per line
+  - <split>_text.txt     : plain text transcriptions for evaluation, one per line
+  - syms.txt             : character-to-index mapping (generated from train split only)
+
+Images are copied into images/train/, images/val/, images/test/ subdirectories.
 
 Word spaces in transcriptions are represented by the special symbol <space>.
 """
 
 import argparse
+import shutil
 from collections import Counter
 from pathlib import Path
 
@@ -30,7 +34,7 @@ def transcription_to_chars(text):
 
 
 def read_split(split_file):
-    """Read a split file, return list of (stem, transcription) pairs."""
+    """Read a split file, return list of (stem, filename, transcription) tuples."""
     entries = []
     with open(split_file, encoding="utf-8") as f:
         for lineno, line in enumerate(f, 1):
@@ -43,60 +47,89 @@ def read_split(split_file):
                 continue
             filename, transcription = parts
             stem = Path(filename).stem
-            entries.append((stem, transcription))
+            entries.append((stem, filename, transcription))
     return entries
 
 
-def write_split(entries, outdir, split_name):
-    ids_path = outdir / f"{split_name}.ids"
-    gt_path = outdir / f"{split_name}.gt.txt"
+def write_split(entries, image_dir, outdir, split_name, copy_images):
+    ids_path = outdir / f"{split_name}_ids.txt"
+    tok_path = outdir / f"{split_name}.txt"
+    text_path = outdir / f"{split_name}_text.txt"
+    img_outdir = outdir / "images" / split_name
+
+    if copy_images:
+        img_outdir.mkdir(parents=True, exist_ok=True)
+
+    missing = []
 
     with open(ids_path, "w", encoding="utf-8") as f_ids, \
-         open(gt_path, "w", encoding="utf-8") as f_gt:
-        for stem, transcription in entries:
+         open(tok_path, "w", encoding="utf-8") as f_tok, \
+         open(text_path, "w", encoding="utf-8") as f_text:
+        for stem, filename, transcription in entries:
+            src = image_dir / filename
+            if not src.exists():
+                missing.append(filename)
+                continue
+
+            if copy_images:
+                shutil.copy2(src, img_outdir / filename)
+
             tokens = transcription_to_chars(transcription)
             f_ids.write(stem + "\n")
-            f_gt.write(" ".join(tokens) + "\n")
+            f_tok.write(" ".join(tokens) + "\n")
+            f_text.write(transcription + "\n")
 
-    print(f"{split_name:6s}: {len(entries)} lines -> {ids_path}, {gt_path}")
-    return entries
+    print(f"{split_name:6s}: {len(entries) - len(missing)} lines")
+    print(f"         ids     -> {ids_path}")
+    print(f"         tokens  -> {tok_path}")
+    print(f"         text    -> {text_path}")
+    if copy_images:
+        print(f"         images -> {img_outdir}")
+    if missing:
+        print(f"         WARNING: {len(missing)} missing images:")
+        for m in missing[:10]:
+            print(f"           {m}")
+        if len(missing) > 10:
+            print(f"           ... and {len(missing) - 10} more")
 
 
 def build_syms(entries):
     """Build character set from training entries, return sorted list of symbols."""
     chars = Counter()
-    for _, transcription in entries:
-        chars.update(transcription.replace(" ", ""))  # spaces handled separately
-    symbols = sorted(chars.keys())
-    return symbols
+    for _, _, transcription in entries:
+        chars.update(transcription.replace(" ", ""))
+    return sorted(chars.keys())
 
 
 def write_syms(symbols, outdir):
     syms_path = outdir / "syms.txt"
-    # Index 0 is reserved for CTC blank, index 1 for <space>, then characters
     with open(syms_path, "w", encoding="utf-8") as f:
-        f.write(f"<ctc> 0\n")
+        f.write("<ctc> 0\n")
         f.write(f"{SPACE_SYMBOL} 1\n")
         for i, sym in enumerate(symbols, start=2):
             f.write(f"{sym} {i}\n")
-    print(f"\nsyms.txt: {len(symbols) + 2} symbols (including <ctc> and {SPACE_SYMBOL}) -> {syms_path}")
+    print(f"syms.txt: {len(symbols) + 2} symbols -> {syms_path}")
     print(f"\nCharacter inventory ({len(symbols)} characters):")
     for sym in symbols:
         print(f"  U+{ord(sym):04X}  {sym}")
+    print()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Prepare PyLaia training data")
+    parser.add_argument("image_dir", help="Directory containing images")
     parser.add_argument("splits_dir", help="Directory containing train/val/test split files")
     parser.add_argument("--outdir", required=True,
                         help="Output directory for PyLaia data files")
+    parser.add_argument("--copy-images", action="store_true",
+                        help="Copy images into images/train|val|test/ subdirectories")
     args = parser.parse_args()
 
+    image_dir = Path(args.image_dir)
     splits_dir = Path(args.splits_dir)
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # Read all splits
     all_entries = {}
     for split_name in ("train", "val", "test"):
         split_file = splits_dir / f"{split_name}.txt"
@@ -109,16 +142,14 @@ def main():
         print("ERROR: train.txt is required to build syms.txt")
         return
 
-    # Build and write syms from training set only
     symbols = build_syms(all_entries["train"])
     write_syms(symbols, outdir)
 
-    # Write splits
-    print()
     for split_name, entries in all_entries.items():
-        write_split(entries, outdir, split_name)
+        write_split(entries, image_dir, outdir, split_name, args.copy_images)
+        print()
 
-    print("\nDone.")
+    print("Done.")
 
 
 if __name__ == "__main__":
