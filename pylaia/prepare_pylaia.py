@@ -3,9 +3,9 @@
 Prepare PyLaia training data from split files.
 
 Produces for each split:
-  - <split>_ids.txt      : image stems, one per line
-  - <split>.txt          : space-separated character transcriptions, one per line
-  - <split>_text.txt     : plain text transcriptions for evaluation, one per line
+  - <split>_ids.txt      : image paths (with split prefix), one per line
+  - <split>.txt          : image path + space-separated char transcription, one per line
+  - <split>_text.txt     : image path + plain text transcription, one per line
   - syms.txt             : character-to-index mapping (generated from train split only)
 
 Word spaces in transcriptions are represented by the special symbol <space>.
@@ -55,10 +55,11 @@ def write_split(entries, outdir, split_name):
          open(tok_path, "w", encoding="utf-8") as f_tok, \
          open(text_path, "w", encoding="utf-8") as f_text:
         for stem, transcription in entries:
+            img_name = f"{split_name}/{stem}"
             tokens = transcription_to_chars(transcription)
-            f_ids.write(stem + "\n")
-            f_tok.write(" ".join(tokens) + "\n")
-            f_text.write(transcription + "\n")
+            f_ids.write(img_name + "\n")
+            f_tok.write(img_name + " " + " ".join(tokens) + "\n")
+            f_text.write(img_name + " " + transcription + "\n")
 
     print(f"{split_name:6s}: {len(entries)} lines")
     print(f"         ids    -> {ids_path}")
