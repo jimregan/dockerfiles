@@ -55,12 +55,12 @@ def main():
     parser = argparse.ArgumentParser(description="Prepare Kraken training data")
     parser.add_argument("image_dir", help="Directory containing images")
     parser.add_argument("splits_dir", help="Directory containing train/val/test split files")
-    parser.add_argument("--outdir", default=None,
-                        help="Output directory for manifests (default: splits_dir)")
+    parser.add_argument("--outdir", required=True,
+                        help="Output directory for Kraken manifests")
     args = parser.parse_args()
 
     splits_dir = Path(args.splits_dir)
-    outdir = Path(args.outdir) if args.outdir else splits_dir
+    outdir = Path(args.outdir)
 
     total = 0
     for split_name in ("train", "val", "test"):
