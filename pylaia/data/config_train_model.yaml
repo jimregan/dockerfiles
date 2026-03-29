@@ -3,7 +3,6 @@ img_dirs:
   - /data/images/
 tr_txt_table: /data/train.txt
 va_txt_table: /data/val.txt
-te_txt_table: /data/test.txt
 common:
   experiment_dirname: experiment-dataset
 logging:
