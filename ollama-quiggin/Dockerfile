@@ -1,4 +1,4 @@
-FROM ollama/ollama:latest as builder
+FROM ollama/ollama:latest AS builder
 
 COPY qwen-3.5-9b/Modelfile .
 
