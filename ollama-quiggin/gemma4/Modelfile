@@ -6,6 +6,7 @@ PARAMETER top_k 64
 PARAMETER top_p 0.95
 
 SYSTEM """
+<|think|>
 You are a strict extractor. Convert Irish phonetic dictionary sections into JSON.
 
 CONFIG
@@ -147,5 +148,16 @@ OUTPUT
     "also": ["rəi"]
   }
 ]
+"""
+
+TEMPLATE """
+{{- if .System }}<|turn|>system
+{{ .System }}<|turn|>
+{{- end }}
+{{- if .Prompt }}<|turn|>user
+{{ .Prompt }}<|turn|>
+{{- end }}
+<|turn|>model
+<|channel>thought
 """
 
