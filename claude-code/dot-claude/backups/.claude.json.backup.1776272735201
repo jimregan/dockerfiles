@@ -1,0 +1,49 @@
+{
+  "numStartups": 1,
+  "theme": "light",
+  "tipsHistory": {
+    "new-user-warmup": 1,
+    "plan-mode-for-complex-tasks": 1,
+    "terminal-setup": 1,
+    "memory-command": 1,
+    "theme-command": 1,
+    "colorterm-truecolor": 1,
+    "status-line": 1,
+    "prompt-queue": 1,
+    "enter-to-steer-in-relatime": 1,
+    "todo-list": 1,
+    "install-github-app": 1,
+    "install-slack-app": 1,
+    "drag-and-drop-images": 1,
+    "double-esc-code-restore": 1,
+    "continue": 1,
+    "shift-tab": 1
+  },
+  "showExpandedTodos": true,
+  "firstStartTime": "2026-04-15T15:34:58.226Z",
+  "opusProMigrationComplete": true,
+  "sonnet1m45MigrationComplete": true,
+  "migrationVersion": 11,
+  "userID": "01f2cb10c61ef68a5d24bd8172bb4f5a72525e06a4d653816c1d480e1a1ee507",
+  "changelogLastFetched": 1776267298837,
+  "hasCompletedOnboarding": true,
+  "lastOnboardingVersion": "2.1.109",
+  "projects": {
+    "/workspace": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "lastGracefulShutdown": false
+    }
+  },
+  "lastReleaseNotesSeen": "2.1.109",
+  "officialMarketplaceAutoInstallAttempted": true,
+  "officialMarketplaceAutoInstalled": true,
+  "showSpinnerTree": false
+}

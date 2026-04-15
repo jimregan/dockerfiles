@@ -1,0 +1,1 @@
+{"agentType":"Explore","description":"Explore the codebase to find patterns for web fetching, HTML parsing (especially using BeautifulSoup), and file writing/downloading utilities, which are necessary for the Gutenberg Ebook Scraper implementation."}
