@@ -1,0 +1,13 @@
+{
+  "id": "1",
+  "subject": "Extract structured data from all index.html files",
+  "description": "Write a comprehensive Python script (or similar) to parse all HTML files found in /data/index. The script must: 1. Iterate over all files. 2. For each file, extract Title (from <h1>), Author (from .book-page-author), Online Text Link (from anchor with 'Online text'), Chapters (from .chapter-download table rows), and Cast details (from 'Character: <a href>...</a>' lines in 'Cast:' sections). 3. Compile this data into a JSON object. 4. For each JSON object created, execute the following Git protocol: create a new branch, write the file, and commit it.",
+  "status": "in_progress",
+  "blocks": [
+    "1"
+  ],
+  "blockedBy": [
+    "1"
+  ],
+  "metadata": {}
+}
