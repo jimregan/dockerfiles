@@ -89,9 +89,18 @@ def load_model(model_id: str):
         "torch_dtype": dtype,
     }
     if torch.cuda.is_available():
-        kwargs["device_map"] = "auto"
+        device_index = int(os.environ.get("FALCON_CUDA_DEVICE", "0"))
+        torch.cuda.set_device(device_index)
+        kwargs["device_map"] = {"": device_index}
 
-    print(f"Loading model {model_id} with dtype={dtype} ...")
+    print(
+        f"Loading model {model_id} with dtype={dtype}"
+        + (
+            f" on cuda:{int(os.environ.get('FALCON_CUDA_DEVICE', '0'))} ..."
+            if torch.cuda.is_available()
+            else " on cpu ..."
+        )
+    )
     model = AutoModelForCausalLM.from_pretrained(model_id, **kwargs)
     print("Model loaded.")
     return model

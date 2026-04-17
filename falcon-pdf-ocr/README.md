@@ -40,7 +40,8 @@ Each page JSON contains the page size plus layout blocks with category, bounding
 cd falcon-pdf-ocr
 docker build -t falcon-pdf-ocr .
 docker run --rm \
-  --gpus all \
+  --gpus '"device=0"' \
+  -e FALCON_CUDA_DEVICE=0 \
   -v /absolute/path/to/pdfs:/data:ro \
   -v /absolute/path/to/output:/output \
   falcon-pdf-ocr
@@ -56,7 +57,8 @@ Or use the helper script:
 
 ```bash
 docker run --rm \
-  --gpus all \
+  --gpus '"device=0"' \
+  -e FALCON_CUDA_DEVICE=0 \
   -e RENDER_DPI=240 \
   -e PAGE_BATCH_SIZE=4 \
   -e OCR_BATCH_SIZE=32 \
@@ -74,4 +76,5 @@ docker run --rm \
 - The first run will download the Falcon OCR weights from Hugging Face into the container cache.
 - The container uses `pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime` because Falcon OCR's current remote model code imports `AuxRequest` from `torch.nn.attention.flex_attention`, which is present in newer PyTorch releases but not in older `2.5.x` builds.
 - The image also installs `build-essential` because Falcon OCR triggers Triton/PyTorch kernel compilation at runtime, which requires a host C compiler inside the container.
+- The runner defaults to a single GPU because Falcon OCR layout inference was failing when the model was auto-sharded across multiple visible GPUs.
 - Old scanned PDFs are precisely the cases where layout mode is most useful, but Falcon OCR's own model card still notes that degraded scans and tiny text remain challenging.
