@@ -72,4 +72,5 @@ docker run --rm \
 
 - This is designed for NVIDIA Docker hosts with GPU access.
 - The first run will download the Falcon OCR weights from Hugging Face into the container cache.
+- The container now installs `torch==2.9.0` and `torchvision==0.24.0` explicitly because Falcon OCR's current remote model code imports `AuxRequest` from `torch.nn.attention.flex_attention`, which is present in newer PyTorch releases but not in older `2.5.x` builds.
 - Old scanned PDFs are precisely the cases where layout mode is most useful, but Falcon OCR's own model card still notes that degraded scans and tiny text remain challenging.

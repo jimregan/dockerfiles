@@ -1,5 +1,4 @@
 transformers>=4.46
-torchvision>=0.20,<0.21
 pillow>=10.0
 einops>=0.8
 PyMuPDF>=1.24
