@@ -20,7 +20,7 @@ RUN apt-get update \
 WORKDIR /src/simh
 RUN git clone --depth 1 --branch "${SIMH_REF}" https://github.com/open-simh/simh.git .
 RUN make cdc1700 NONETWORK=1 NOVIDEO=1 TESTS=0
-RUN wget --progress=dot:giga --output-document /src/MSOS5_SL136.tap "${MSOS_TAPE_URL}"
+RUN wget --user-agent 'Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.12.45 Mobile Safari/537.36' --progress=dot:giga --output-document /src/MSOS5_SL136.tap "${MSOS_TAPE_URL}"
 
 FROM debian:${DEBIAN_VERSION}-slim
 
