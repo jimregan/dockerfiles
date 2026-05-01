@@ -18,5 +18,4 @@ COPY --from=builder /iso/*.iso /kolibri.iso
 
 EXPOSE 5900 6080
 
-CMD qemu-system-i386 -cdrom /kolibri.iso -boot d -m 64 -vnc :0 -k en-us & \
-    exec websockify --web=/usr/share/novnc 6080 localhost:5900
+CMD ["/bin/sh", "-c", "qemu-system-i386 -cdrom /kolibri.iso -boot d -m 64 -vnc :0 -k en-us & exec websockify --web=/usr/share/novnc 6080 localhost:5900"]
