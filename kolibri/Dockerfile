@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
     qemu-system-x86 \
     novnc \
     python3-websockify \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /iso/*.iso /kolibri.iso
 
 EXPOSE 5900 6080
 
-CMD ["/bin/sh", "-c", "qemu-system-i386 -cdrom /kolibri.iso -boot d -m 64 -vnc :0 -k en-us & exec websockify --web=/usr/share/novnc 6080 localhost:5900"]
+CMD ["/bin/sh", "-c", "qemu-system-i386 -cdrom /kolibri.iso -boot d -m 64 -vnc :0 -k en-us & until nc -z localhost 5900; do sleep 0.5; done && exec websockify --web=/usr/share/novnc 6080 localhost:5900"]
