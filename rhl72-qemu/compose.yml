@@ -1,5 +1,11 @@
 services:
 
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: rhl72-base
+
   # --- Interactive VM: use this to develop the RPM spec ---
   interactive:
     build:
