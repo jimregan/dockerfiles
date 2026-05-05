@@ -1,0 +1,34 @@
+services:
+
+  # --- Interactive VM: use this to develop the RPM spec ---
+  interactive:
+    build:
+      context: .
+      dockerfile: Dockerfile.interactive
+    image: rhl72-interactive
+    privileged: true        # needed for /dev/kvm and loop mounts
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - rhl72-disk:/disk
+      - ./isos:/rhl72/isos:ro
+    ports:
+      - "5900:5900"         # VNC — connect with any VNC client to localhost:5900
+      - "2222:2222"         # SSH inside the VM
+
+  # --- Automated build: produces the RPM ---
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    image: rhl72-build
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - ./output:/output
+    profiles:
+      - build               # only runs when explicitly requested
+
+volumes:
+  rhl72-disk:

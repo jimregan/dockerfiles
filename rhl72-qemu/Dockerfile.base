@@ -1,0 +1,21 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    qemu-system-i386 \
+    qemu-utils \
+    qemu-system-common \
+    python3 \
+    genisoimage \
+    rsync \
+    isoinfo \
+    wget \
+    openssh-client \
+    expect \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /rhl72
+
+COPY scripts/ /rhl72/scripts/
+RUN chmod +x /rhl72/scripts/*.sh
