@@ -20,7 +20,7 @@ services:
       - ${ISO_DIR:-./isos}:/rhl72/isos:ro
       - ./kickstart.cfg:/rhl72/kickstart.cfg:ro
       - ./scripts:/rhl72/scripts:ro
-    command: /rhl72/scripts/install-vm.sh
+    command: bash /rhl72/scripts/install-vm.sh
     profiles:
       - install
 

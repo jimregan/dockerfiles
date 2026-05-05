@@ -7,4 +7,4 @@ COPY ${DISK_IMAGE} /disk/rhl72.qcow2
 
 EXPOSE 5900
 
-CMD ["/rhl72/scripts/run-final.sh"]
+CMD ["bash", "/rhl72/scripts/run-final.sh"]

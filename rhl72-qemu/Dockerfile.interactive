@@ -6,4 +6,4 @@ VOLUME ["/disk"]
 EXPOSE 6080
 EXPOSE 2222
 
-CMD ["/rhl72/scripts/run-interactive.sh"]
+CMD ["bash", "/rhl72/scripts/run-interactive.sh"]
