@@ -6,21 +6,52 @@ services:
       dockerfile: Dockerfile.base
     image: rhl72-base
 
+  # --- One-time install: creates the disk image ---
+  # Put your ISOs anywhere and set ISO_DIR to that path, e.g.:
+  #   ISO_DIR=/Volumes/External/rhl72 docker compose run --rm install
+  # Default expects isos/ next to this file.
+  install:
+    image: rhl72-base
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - rhl72-disk:/disk
+      - ${ISO_DIR:-./isos}:/rhl72/isos:ro
+      - ./kickstart.cfg:/rhl72/kickstart.cfg:ro
+      - ./scripts:/rhl72/scripts:ro
+    command: /rhl72/scripts/install-vm.sh
+    profiles:
+      - install
+
   # --- Interactive VM: use this to develop the RPM spec ---
   interactive:
     build:
       context: .
       dockerfile: Dockerfile.interactive
     image: rhl72-interactive
-    privileged: true        # needed for /dev/kvm and loop mounts
+    privileged: true
     devices:
       - /dev/kvm:/dev/kvm
     volumes:
       - rhl72-disk:/disk
-      - ./isos:/rhl72/isos:ro
     ports:
-      - "6080:6080"         # noVNC — open http://localhost:6080/vnc.html in a browser
-      - "2222:2222"         # SSH inside the VM
+      - "6080:6080"
+      - "2222:2222"
+
+  # --- Automated build: produces the RPM ---
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    image: rhl72-build
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - ./output:/output
+    profiles:
+      - build
 
   # --- Final image: Mozilla + Tcl Plugin installed, ready to browse ---
   final:
@@ -35,20 +66,6 @@ services:
       - "6080:6080"
     profiles:
       - final
-
-  # --- Automated build: produces the RPM ---
-  build:
-    build:
-      context: .
-      dockerfile: Dockerfile.build
-    image: rhl72-build
-    privileged: true
-    devices:
-      - /dev/kvm:/dev/kvm
-    volumes:
-      - ./output:/output
-    profiles:
-      - build               # only runs when explicitly requested
 
 volumes:
   rhl72-disk:
