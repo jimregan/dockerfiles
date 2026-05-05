@@ -1,6 +1,23 @@
 # RHL 7.2 in QEMU in Docker
 
-Historical recreation: Red Hat Linux 7.2 running Apache 1.3 with mod_tcl.
+Historical recreation: Red Hat Linux 7.2 running Netscape with the Tcl Plugin —
+the NPAPI plugin that embedded Tcl/Tk scripts in web pages (think Java applets, but Tcl).
+
+## About the Tcl Plugin
+
+The plugin was developed at Sun Microsystems and lets pages use `<EMBED type="application/x-tcl">` 
+to run Tcl/Tk scripts inside the browser window. The built artifact is a shared library 
+(`nsplugin.so`) installed into Mozilla's plugins directory (`/usr/lib/mozilla/plugins/`).
+
+RHL 7.2 ships Mozilla 0.9.4, which uses the same NPAPI interface as Netscape 4.x.
+
+Build dependencies: `tcl-devel`, `tk-devel`, `XFree86-devel`, and the NPAPI headers
+(`npapi.h` etc.). The headers come from the Mozilla source tree — they may or may not be
+included in the `mozilla` RPM on the ISOs; if not, grab them from the Mozilla 0.9.4 source
+tarball on archive.org.
+
+Source: the Tcl Plugin source was hosted on SourceForge; archive.org has historical tarballs.
+The 2.x series targets the NPAPI interface used by both Netscape 4.x and early Mozilla.
 
 ## Prerequisites
 

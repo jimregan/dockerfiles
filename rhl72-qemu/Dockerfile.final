@@ -1,0 +1,10 @@
+FROM rhl72-base
+
+# The disk image here is the one from Dockerfile.build output —
+# it has the Tcl Plugin RPM already installed.
+ARG DISK_IMAGE=disk/rhl72-with-plugin.qcow2
+COPY ${DISK_IMAGE} /disk/rhl72.qcow2
+
+EXPOSE 5900
+
+CMD ["/rhl72/scripts/run-final.sh"]
