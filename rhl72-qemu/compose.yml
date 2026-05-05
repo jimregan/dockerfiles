@@ -13,8 +13,22 @@ services:
       - rhl72-disk:/disk
       - ./isos:/rhl72/isos:ro
     ports:
-      - "5900:5900"         # VNC — connect with any VNC client to localhost:5900
+      - "6080:6080"         # noVNC — open http://localhost:6080/vnc.html in a browser
       - "2222:2222"         # SSH inside the VM
+
+  # --- Final image: Mozilla + Tcl Plugin installed, ready to browse ---
+  final:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
+    image: rhl72-final
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+    profiles:
+      - final
 
   # --- Automated build: produces the RPM ---
   build:

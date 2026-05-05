@@ -9,12 +9,18 @@ DISK=/disk/rhl72.qcow2
 KVM_FLAG=""
 [ -e /dev/kvm ] && KVM_FLAG="-enable-kvm -cpu host"
 
-echo "VNC on port 5900. Connect with: vncviewer localhost:5900"
+echo "noVNC available at: http://localhost:6080/vnc.html"
 
-exec qemu-system-i386 \
+qemu-system-i386 \
     -m 256 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
     $KVM_FLAG \
-    -vnc :0
+    -vnc 127.0.0.1:0 &
+
+QEMU_PID=$!
+
+websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900
+
+wait $QEMU_PID

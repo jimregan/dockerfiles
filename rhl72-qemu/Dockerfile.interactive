@@ -1,14 +1,9 @@
 FROM rhl72-base
 
-RUN apt-get update && apt-get install -y \
-    tigervnc-viewer \
-    socat \
-    && rm -rf /var/lib/apt/lists/*
-
 # Disk image lives on a named volume so it persists between runs
 VOLUME ["/disk"]
 
-EXPOSE 5900
+EXPOSE 6080
 EXPOSE 2222
 
 CMD ["/rhl72/scripts/run-interactive.sh"]
