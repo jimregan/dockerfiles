@@ -11,7 +11,6 @@ set -euo pipefail
 
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
-DISC3=${DISC3:-/rhl72/isos/disc3.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 
 if [ -f "$DISK" ]; then
@@ -19,7 +18,7 @@ if [ -f "$DISK" ]; then
     exit 0
 fi
 
-for ISO in "$DISC1" "$DISC2" "$DISC3"; do
+for ISO in "$DISC1" "$DISC2"; do
     [ -f "$ISO" ] || { echo "Missing ISO: $ISO"; exit 1; }
 done
 
@@ -35,7 +34,7 @@ trap cleanup EXIT
 
 mkdir -p "$TREE/RedHat/RPMS"
 
-for ISO in "$DISC1" "$DISC2" "$DISC3"; do
+for ISO in "$DISC1" "$DISC2"; do
     echo "Mounting $ISO ..."
     mount -o loop,ro "$ISO" "$MNT"
     rsync -a "$MNT/RedHat/RPMS/" "$TREE/RedHat/RPMS/"
