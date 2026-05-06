@@ -5,11 +5,9 @@ ISO_DIR=${ISO_DIR:?Please set ISO_DIR to the directory containing your RHL 7.2 I
 ROOT_PASSWORD=${ROOT_PASSWORD:-rootpassword}
 INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
 INSTALL_VNC=${INSTALL_VNC:-0}
-INSTALL_BOOT=${INSTALL_BOOT:-direct}
-BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
+BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
-KS_ARG=${KS_ARG:-ks=floppy}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -29,11 +27,9 @@ CID=$(docker run -d --privileged $KVM $PORTS \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
     -e INSTALL_VNC="$INSTALL_VNC" \
-    -e INSTALL_BOOT="$INSTALL_BOOT" \
     -e BOOT_IMAGE="$BOOT_IMAGE" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
-    -e KS_ARG="$KS_ARG" \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

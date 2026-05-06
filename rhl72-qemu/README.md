@@ -39,7 +39,7 @@ This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting d
 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer defaults to software CPU emulation with a Pentium III CPU model because the RHL 7.2 installer kernel can hang very early with KVM host CPU passthrough on modern Linux. To try KVM during install:
+The installer defaults to software CPU emulation with a Pentium II CPU model because the RHL 7.2 installer kernel can hang very early with KVM host CPU passthrough on modern Linux. To try KVM during install:
 
 ```bash
 INSTALL_USE_KVM=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
@@ -51,13 +51,13 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer defaults to a patched copy of disc 1's `images/bootnet.img` network-install boot floppy with kickstart arguments added to `syslinux.cfg`. To boot from disc 1's original ISO boot path for manual debugging:
+The installer creates a patched copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `ks.cfg` with `mcopy`, and updates `syslinux.cfg` to append `ks=floppy`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
 
 ```bash
-INSTALL_BOOT=iso INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
+BOOT_IMAGE=bootnet.img INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-RHL 7.2 kickstart location syntax is older than later RHEL syntax. Valid local forms include `ks=floppy`, `ks=hd:fd0/ks.cfg`, and `ks=file:/ks.cfg`; do not use the later `ks=hd:fd0:/ks.cfg` spelling.
+RHL 7.2 kickstart location syntax is older than later RHEL syntax. The current installer path uses `ks=floppy`.
 
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
