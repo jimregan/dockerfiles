@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-22
+INSTALL_SCRIPT_REV=20260506-23
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -194,7 +194,24 @@ if [ "$rc" != "0" ]; then
     exit "$rc"
 fi
 INSTALL_ERROR=""
-run_step start-nfsd rpc.nfsd 8
+INSTALL_STATUS="start-nfsd"
+INSTALL_ERROR="start-nfsd started but did not complete"
+echo "Running step: start-nfsd: rpc.nfsd 8"
+set +e
+rpc.nfsd 8 >/tmp/rpc-nfsd.out 2>/tmp/rpc-nfsd.err
+rc=$?
+set -e
+if [ "$rc" != "0" ]; then
+    nfsd_output=$(cat /tmp/rpc-nfsd.out /tmp/rpc-nfsd.err 2>/dev/null || true)
+    nfsd_state=$(findmnt /proc/fs/nfsd 2>/dev/null || true)
+    nfsd_files=$(find /proc/fs/nfsd -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | sort || true)
+    printf '%s\n' "$nfsd_output"
+    printf 'findmnt /proc/fs/nfsd:\n%s\n' "$nfsd_state"
+    printf '/proc/fs/nfsd files:\n%s\n' "$nfsd_files"
+    INSTALL_ERROR="start-nfsd failed rc=$rc: $nfsd_output | findmnt: $nfsd_state | files: $nfsd_files"
+    exit "$rc"
+fi
+INSTALL_ERROR=""
 run_step show-exports exportfs -v
 rpc.mountd -F &
 MOUNTD_PID=$!
