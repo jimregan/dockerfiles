@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-4
+INSTALL_SCRIPT_REV=20260506-5
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -22,8 +22,11 @@ HTTP_PID=""
 KS_PID=""
 KS_FLOPPY=""
 BOOT_FLOPPY=""
+LAST_QEMU_EXIT=""
+INSTALL_STATUS="not-started"
 
 cleanup() {
+    local exit_code=$?
     [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
     [ -n "$KS_PID" ] && kill "$KS_PID" 2>/dev/null || true
     [ -n "$KS_FLOPPY" ] && rm -f "$KS_FLOPPY" 2>/dev/null || true
@@ -31,6 +34,22 @@ cleanup() {
     umount "$MNT1" 2>/dev/null || true
     umount "$MNT2" 2>/dev/null || true
     rmdir "$MNT1" "$MNT2" 2>/dev/null || true
+    if [ "$exit_code" != "0" ]; then
+        set +x
+        echo
+        echo "=== RHL72 INSTALL FAILURE SUMMARY ==="
+        echo "script_revision=$INSTALL_SCRIPT_REV"
+        echo "status=$INSTALL_STATUS"
+        echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
+        echo "install_boot=$INSTALL_BOOT"
+        echo "boot_image=${BOOT_IMAGE:-unset}"
+        echo "install_mem=${INSTALL_MEM:-unset}"
+        echo "cpu_args=${CPU_FLAG:-unset}"
+        echo "append_args=${APPEND_ARGS:-unset}"
+        echo "disk=$DISK"
+        echo "=== END SUMMARY ==="
+    fi
+    exit "$exit_code"
 }
 trap cleanup EXIT
 
@@ -99,11 +118,11 @@ qemu-img create -f qcow2 "$DISK" 8G
 CPU_FLAG=$(qemu_install_cpu_args)
 INSTALL_MEM=${INSTALL_MEM:-256}
 DISPLAY_ARGS="-display none -serial stdio"
-APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=ttyS0,9600n8"
+APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
 NOVNC_PID=""
 if [ "${INSTALL_VNC:-0}" != "0" ]; then
     DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
-    APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp"
+    APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
     websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
     NOVNC_PID=$!
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
@@ -154,6 +173,8 @@ echo "Installer memory: ${INSTALL_MEM}M"
 echo "Installer CPU args: $CPU_FLAG"
 
 if [ "$INSTALL_BOOT" = "direct" ]; then
+    INSTALL_STATUS="qemu-running"
+    set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
@@ -161,11 +182,16 @@ if [ "$INSTALL_BOOT" = "direct" ]; then
         -drive file="$KS_FLOPPY",format=raw,if=floppy,index=1 \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device ne2k_pci,netdev=net0 \
+        -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
         $CPU_FLAG \
+        -no-acpi \
         $DISPLAY_ARGS \
         -no-reboot
+    LAST_QEMU_EXIT=$?
+    set -e
 else
+    INSTALL_STATUS="qemu-running"
+    set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
@@ -173,12 +199,22 @@ else
         -drive file="$DISC1",format=raw,if=ide,index=2,media=cdrom \
         -boot d \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device ne2k_pci,netdev=net0 \
+        -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
         $CPU_FLAG \
+        -no-acpi \
         $DISPLAY_ARGS \
         -no-reboot
+    LAST_QEMU_EXIT=$?
+    set -e
+fi
+
+if [ "$LAST_QEMU_EXIT" != "0" ]; then
+    INSTALL_STATUS="qemu-exited-nonzero"
+    exit "$LAST_QEMU_EXIT"
 fi
 
 [ -n "$NOVNC_PID" ] && kill "$NOVNC_PID" 2>/dev/null || true
+INSTALL_STATUS="validating-disk"
 require_bootable_disk "$DISK"
+INSTALL_STATUS="complete"
 echo "Install complete: $DISK"

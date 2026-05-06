@@ -38,8 +38,11 @@ CID=$(docker run -d --privileged $KVM $PORTS \
 docker logs -f "$CID"
 EXIT=$(docker wait "$CID")
 if [ "$EXIT" != "0" ]; then
-    echo "Installer failed (exit $EXIT)"
-    docker rm "$CID"
+    echo
+    echo "=== LAST INSTALLER LOGS TO PASTE ==="
+    docker logs --tail 80 "$CID" 2>/dev/null || true
+    docker rm "$CID" >/dev/null
+    echo "=== END INSTALLER LOGS exit=$EXIT ==="
     exit 1
 fi
 docker commit "$CID" rhl72-installed
