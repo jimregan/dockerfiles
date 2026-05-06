@@ -136,6 +136,8 @@ EOF
     cp /rhl72/kickstart.cfg "$BOOTMNT/ks.cfg"
     echo "Patched boot floppy syslinux.cfg:"
     cat "$BOOTMNT/syslinux.cfg"
+    echo "Kickstart copied to boot floppy:"
+    cat "$BOOTMNT/ks.cfg"
     echo "Patched boot floppy files:"
     find "$BOOTMNT" -maxdepth 1 -type f -printf '%f\n' | sort
     umount "$BOOTMNT"
