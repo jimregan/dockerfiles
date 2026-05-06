@@ -6,7 +6,7 @@ set -euo pipefail
 ISO=${1:?Usage: extract-boot.sh disc1.iso}
 OUTDIR=${2:-/rhl72/isos}
 
-MNT=${MNT:-/tmp/rhl72-extract-boot.$$}
+MNT=${MNT:-/tmp/rhl72-extract-boot}
 cleanup() { umount "$MNT" 2>/dev/null || true; rmdir "$MNT"; }
 trap cleanup EXIT
 

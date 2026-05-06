@@ -16,7 +16,7 @@ for ISO in "$DISC1" "$DISC2"; do
     [ -f "$ISO" ] || { echo "Missing: $ISO"; exit 1; }
 done
 
-WORK=${WORK:-/tmp/rhl72-install.$$}
+WORK=${WORK:-/tmp/rhl72-install}
 MNT1="$WORK/disc1"
 MNT2="$WORK/disc2"
 HTTP_PID=""
