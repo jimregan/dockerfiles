@@ -1,9 +1,0 @@
-FROM rhl72-base
-
-# Disk image lives on a named volume so it persists between runs
-VOLUME ["/disk"]
-
-EXPOSE 6080
-EXPOSE 2222
-
-CMD ["bash", "/rhl72/scripts/run-interactive.sh"]
