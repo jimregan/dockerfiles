@@ -51,13 +51,13 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer creates a patched copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `ks.cfg` with `mcopy`, and updates `syslinux.cfg` to append `ks=floppy`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
+The installer creates a copy of disc 1's `images/boot.img` and adds `kickstart.cfg` as `ks.cfg` with `mcopy`. It does not rewrite the boot floppy's `syslinux.cfg`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
 
 ```bash
 BOOT_IMAGE=bootnet.img INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-RHL 7.2 kickstart location syntax is older than later RHEL syntax. The current installer path uses `ks=floppy`.
+RHL 7.2 kickstart location syntax is older than later RHEL syntax. The current installer path puts `ks.cfg` on the boot floppy for the documented `linux ks=floppy` path.
 
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 

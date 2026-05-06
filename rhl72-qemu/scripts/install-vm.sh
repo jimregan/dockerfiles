@@ -15,13 +15,12 @@ WORK=/tmp/rhl72-install
 MNT1="$WORK/disc1"
 MNT2="$WORK/disc2"
 BOOT_FLOPPY="$WORK/boot-ks.img"
-SYSLINUX_CFG="$WORK/syslinux.cfg"
 HTTP_PID=""
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-2
+INSTALL_SCRIPT_REV=20260506-mcopy-3
 
 fail() {
     INSTALL_ERROR=$1
@@ -102,8 +101,6 @@ EOF
 
 make_boot_floppy() {
     local source="$MNT1/images/$BOOT_IMAGE"
-    local original_append
-    local patched_append
 
     INSTALL_STATUS="creating-boot-floppy"
 
@@ -114,36 +111,10 @@ make_boot_floppy() {
     }
 
     cp "$source" "$BOOT_FLOPPY"
-
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg
-    mcopy -i "$BOOT_FLOPPY" ::syslinux.cfg "$SYSLINUX_CFG"
-
-    original_append=$(awk '
-        /^[[:space:]]*append[[:space:]]/ {
-            sub(/^[[:space:]]*append[[:space:]]+/, "")
-            print
-            exit
-        }
-    ' "$SYSLINUX_CFG")
-    [ -n "$original_append" ] || original_append="initrd=initrd.img"
-
-    patched_append=$(printf '%s\n' "$original_append" \
-        | sed -E 's/(^| )ks=[^ ]+//g; s/  +/ /g; s/^ //; s/ $//')
-
-    cat > "$SYSLINUX_CFG" << EOF
-DEFAULT linux
-PROMPT 0
-TIMEOUT 1
-LABEL linux
-KERNEL vmlinuz
-APPEND $patched_append ks=floppy
-EOF
-
-    mcopy -o -i "$BOOT_FLOPPY" "$SYSLINUX_CFG" ::syslinux.cfg
 
     echo "Boot floppy image: images/$BOOT_IMAGE"
-    echo "Original syslinux append: $original_append"
-    echo "Patched syslinux.cfg:"
+    echo "Original syslinux.cfg:"
     mtype -i "$BOOT_FLOPPY" ::syslinux.cfg
     echo "Boot floppy root:"
     mdir -i "$BOOT_FLOPPY" ::
