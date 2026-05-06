@@ -50,19 +50,36 @@ mount -o loop,ro "$DISC1" "$MNT"
 VMLINUZ="$TREE/vmlinuz"
 INITRD="$TREE/initrd.img"
 
+echo "Contents of images/ on disc1:"
+ls "$MNT/images/"
+
 # RHL 7.2 (2001) uses images/ directly; pxeboot/ subdir came later
 if [ -f "$MNT/images/pxeboot/vmlinuz" ]; then
+    echo "Using images/pxeboot/"
     cp "$MNT/images/pxeboot/vmlinuz"    "$VMLINUZ"
     cp "$MNT/images/pxeboot/initrd.img" "$INITRD"
 elif [ -f "$MNT/images/vmlinuz" ]; then
-    cp "$MNT/images/vmlinuz"   "$VMLINUZ"
-    cp "$MNT/images/ramdisk.img" "$INITRD"
+    echo "Using images/vmlinuz"
+    cp "$MNT/images/vmlinuz" "$VMLINUZ"
+    # find the initrd — name varies
+    for name in ramdisk.img initrd.img boot.img; do
+        if [ -f "$MNT/images/$name" ]; then
+            echo "Found initrd: images/$name"
+            cp "$MNT/images/$name" "$INITRD"
+            break
+        fi
+    done
 else
-    echo "Could not find installer kernel on disc1. Contents of images/:"
-    ls "$MNT/images/"
+    echo "Could not find installer kernel. Full images/ listing:"
+    find "$MNT/images/" -type f
     umount "$MNT"
     exit 1
 fi
+
+[ -f "$INITRD" ] || { echo "Could not find initrd. images/ listing:"; find "$MNT/images/" -type f; umount "$MNT"; exit 1; }
+
+echo "Kernel: $VMLINUZ ($(du -h "$VMLINUZ" | cut -f1))"
+echo "Initrd: $INITRD ($(du -h "$INITRD" | cut -f1))"
 
 umount "$MNT"
 
