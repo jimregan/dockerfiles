@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-17
+INSTALL_SCRIPT_REV=20260506-18
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -120,13 +120,17 @@ KS_PID=$!
 
 run_step() {
     local status=$1
+    local output
     shift
     INSTALL_STATUS="$status"
     echo "Running step: $status: $*"
-    if ! "$@"; then
-        INSTALL_ERROR="$status failed: $*"
+    output=$("$@" 2>&1)
+    if [ "$?" != "0" ]; then
+        printf '%s\n' "$output"
+        INSTALL_ERROR="$status failed: $*: $output"
         return 1
     fi
+    [ -n "$output" ] && printf '%s\n' "$output"
 }
 
 # RHL 7.2's documented network kickstart path is NFS. QEMU user networking
@@ -134,7 +138,7 @@ run_step() {
 INSTALL_STATUS="starting-nfs-kickstart"
 mkdir -p /export/ks
 cp /rhl72/kickstart.cfg /export/ks/ks.cfg
-printf '%s\n' '/export/ks *(ro,sync,insecure,no_subtree_check,no_root_squash)' > /etc/exports
+printf '%s\n' '/export/ks 10.0.2.0/24(ro,sync,insecure,no_subtree_check,no_root_squash,fsid=0)' > /etc/exports
 mkdir -p /run/rpcbind /proc/fs/nfsd
 modprobe nfsd 2>/dev/null || true
 if ! mountpoint -q /proc/fs/nfsd; then
