@@ -21,7 +21,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-5
+INSTALL_SCRIPT_REV=20260506-mcopy-6
 
 fail() {
     INSTALL_ERROR=$1
@@ -115,6 +115,9 @@ make_boot_floppy() {
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg
     mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
     sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default ks/' "$SYSLINUX_CFG"
+    sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Kk][Ss][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
+        s/^[[:space:]]*[Aa][Pp][Pp][Ee][Nn][Dd][[:space:]]\+ks[[:space:]]/  append ks=floppy /
+    }' "$SYSLINUX_CFG"
     mcopy -o -i "$BOOT_FLOPPY" "$SYSLINUX_CFG" ::SYSLINUX.CFG
 
     echo "Boot floppy image: images/$BOOT_IMAGE"

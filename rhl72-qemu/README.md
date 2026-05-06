@@ -51,7 +51,7 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `ks.cfg` with `mcopy`, and changes `SYSLINUX.CFG` to boot Red Hat's existing `ks` label by default. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
+The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `ks.cfg` with `mcopy`, changes `SYSLINUX.CFG` to boot Red Hat's existing `ks` label by default, and changes that label from network kickstart (`ks`) to floppy kickstart (`ks=floppy`). To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
 
 ```bash
 BOOT_IMAGE=bootnet.img INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
