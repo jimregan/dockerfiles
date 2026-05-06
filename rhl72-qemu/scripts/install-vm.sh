@@ -7,7 +7,10 @@ set -euxo pipefail
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
-INSTALL_BOOT=${INSTALL_BOOT:-iso}
+INSTALL_BOOT=${INSTALL_BOOT:-direct}
+INSTALL_SCRIPT_REV=20260506-2
+
+echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
 for ISO in "$DISC1" "$DISC2"; do
     [ -f "$ISO" ] || { echo "Missing: $ISO"; exit 1; }

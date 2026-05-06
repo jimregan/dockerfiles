@@ -45,10 +45,10 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer defaults to booting from disc 1's ISO boot path. To force the extracted kernel/initrd direct-boot path:
+The installer defaults to the extracted kernel/initrd direct-boot path so kickstart arguments can be passed automatically. To boot from disc 1's ISO boot path for manual debugging:
 
 ```bash
-INSTALL_BOOT=direct ISO_DIR=/path/to/rhl72-isos ./build.sh
+INSTALL_BOOT=iso INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
