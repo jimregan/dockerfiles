@@ -8,8 +8,8 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-10
-KS_ARG=${KS_ARG:-ks=http://10.0.2.2:8081/ks.cfg}
+INSTALL_SCRIPT_REV=20260506-11
+KS_ARG=${KS_ARG:-ks=floppy}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
