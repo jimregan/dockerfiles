@@ -108,13 +108,15 @@ if [ "${INSTALL_VNC:-0}" != "0" ]; then
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
 fi
 
-if [ -f "$MNT1/images/boot.img" ]; then
+BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
+
+if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
     BOOT_FLOPPY=$(mktemp)
-    cp "$MNT1/images/boot.img" "$BOOT_FLOPPY"
+    cp "$MNT1/images/$BOOT_IMAGE" "$BOOT_FLOPPY"
     BOOTMNT=$(mktemp -d)
     mount -o loop "$BOOT_FLOPPY" "$BOOTMNT"
     if [ ! -f "$BOOTMNT/syslinux.cfg" ]; then
-        echo "No syslinux.cfg found in $MNT1/images/boot.img"
+        echo "No syslinux.cfg found in $MNT1/images/$BOOT_IMAGE"
         find "$BOOTMNT" -maxdepth 1 -type f -print
         umount "$BOOTMNT"
         rmdir "$BOOTMNT"
@@ -137,7 +139,7 @@ EOF
     umount "$BOOTMNT"
     rmdir "$BOOTMNT"
 else
-    echo "Cannot find $MNT1/images/boot.img"
+    echo "Cannot find $MNT1/images/$BOOT_IMAGE"
     find "$MNT1/images" -maxdepth 1 -type f -print || true
     exit 1
 fi
