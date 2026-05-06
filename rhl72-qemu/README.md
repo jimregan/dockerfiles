@@ -33,6 +33,12 @@ This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting d
 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
+The installer defaults to software CPU emulation with a Pentium III CPU model because the RHL 7.2 installer kernel can hang very early with KVM host CPU passthrough on modern Linux. To try KVM during install:
+
+```bash
+INSTALL_USE_KVM=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
+```
+
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
 ```bash

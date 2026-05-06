@@ -84,18 +84,19 @@ KS_PID=$!
 
 qemu-img create -f qcow2 "$DISK" 8G
 
-KVM_FLAG=$(qemu_kvm_args)
+CPU_FLAG=$(qemu_install_cpu_args)
 
 qemu-system-i386 \
     -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
-    $KVM_FLAG \
+    $CPU_FLAG \
     -kernel "$VMLINUZ" \
     -initrd "$INITRD" \
-    -append "ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 console=ttyS0" \
+    -append "text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=ttyS0,9600n8" \
     -nographic \
     -serial mon:stdio
 
+require_bootable_disk "$DISK"
 echo "Install complete: $DISK"

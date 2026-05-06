@@ -3,6 +3,7 @@ set -euo pipefail
 
 ISO_DIR=${ISO_DIR:?Please set ISO_DIR to the directory containing your RHL 7.2 ISOs}
 ROOT_PASSWORD=${ROOT_PASSWORD:-rootpassword}
+INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -18,6 +19,7 @@ CID=$(docker run -d --privileged $KVM \
     -v "$ISO_DIR":/rhl72/isos:ro \
     -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
+    -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

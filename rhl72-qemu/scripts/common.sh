@@ -7,8 +7,16 @@ SSH_PORT=${SSH_PORT:-2222}
 SSH_HOST=${SSH_HOST:-localhost}
 
 qemu_kvm_args() {
-    if [ -e /dev/kvm ]; then
+    if [ "${USE_KVM:-1}" != "0" ] && [ -e /dev/kvm ]; then
         printf '%s\n' "-enable-kvm -cpu host"
+    fi
+}
+
+qemu_install_cpu_args() {
+    if [ "${INSTALL_USE_KVM:-0}" != "0" ] && [ -e /dev/kvm ]; then
+        printf '%s\n' "-enable-kvm -cpu pentium3"
+    else
+        printf '%s\n' "-cpu pentium3"
     fi
 }
 
@@ -69,6 +77,7 @@ require_bootable_disk() {
     local disk=${1:?disk path required}
     local mbr
     local signature
+    local partitions
 
     if [ ! -f "$disk" ]; then
         echo "No disk image found at $disk. Run install-vm.sh first."
@@ -83,11 +92,25 @@ require_bootable_disk() {
     fi
 
     signature=$(tail -c 2 "$mbr" | od -An -tx1 | tr -d ' \n')
-    rm -f "$mbr"
+    partitions=$(dd if="$mbr" bs=1 skip=446 count=64 2>/dev/null | od -An -tx1 | tr -d ' \n')
 
     if [ "$signature" != "55aa" ]; then
         echo "$disk exists, but it does not contain a bootable MBR signature."
         echo "The RHL 7.2 install likely did not complete. Re-run: ISO_DIR=/path/to/isos ./build.sh"
+        echo "First sector:"
+        od -Ax -tx1 "$mbr"
+        rm -f "$mbr"
         return 1
     fi
+
+    if [ "$partitions" = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
+        echo "$disk has an MBR signature, but the partition table is empty."
+        echo "The RHL 7.2 installer did not partition the disk successfully."
+        echo "First sector:"
+        od -Ax -tx1 "$mbr"
+        rm -f "$mbr"
+        return 1
+    fi
+
+    rm -f "$mbr"
 }
