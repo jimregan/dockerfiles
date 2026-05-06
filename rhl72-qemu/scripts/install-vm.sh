@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-18
+INSTALL_SCRIPT_REV=20260506-19
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -121,14 +121,18 @@ KS_PID=$!
 run_step() {
     local status=$1
     local output
+    local rc
     shift
     INSTALL_STATUS="$status"
     echo "Running step: $status: $*"
+    set +e
     output=$("$@" 2>&1)
-    if [ "$?" != "0" ]; then
+    rc=$?
+    set -e
+    if [ "$rc" != "0" ]; then
         printf '%s\n' "$output"
-        INSTALL_ERROR="$status failed: $*: $output"
-        return 1
+        INSTALL_ERROR="$status failed rc=$rc: $*: $output"
+        exit "$rc"
     fi
     [ -n "$output" ] && printf '%s\n' "$output"
 }
