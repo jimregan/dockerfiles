@@ -13,6 +13,7 @@ KVM=""
 
 CID=$(docker run -d --privileged $KVM \
     -v "$ISO_DIR":/rhl72/isos:ro \
+    -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

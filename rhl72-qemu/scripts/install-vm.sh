@@ -25,10 +25,11 @@ done
 # --- Combine all three ISOs into a single package tree ---
 TREE=$(mktemp -d)
 MNT=$(mktemp -d)
+HTTP_PID=""
 cleanup() {
     umount "$MNT" 2>/dev/null || true
     rm -rf "$MNT" "$TREE"
-    kill "$HTTP_PID" 2>/dev/null || true
+    [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
 
