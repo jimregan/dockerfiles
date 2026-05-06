@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-2
+INSTALL_SCRIPT_REV=20260506-3
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -21,11 +21,13 @@ MNT2=$(mktemp -d)
 HTTP_PID=""
 KS_PID=""
 KS_FLOPPY=""
+BOOT_ISO=""
 
 cleanup() {
     [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
     [ -n "$KS_PID" ] && kill "$KS_PID" 2>/dev/null || true
     [ -n "$KS_FLOPPY" ] && rm -f "$KS_FLOPPY" 2>/dev/null || true
+    [ -n "$BOOT_ISO" ] && rm -f "$BOOT_ISO" 2>/dev/null || true
     umount "$MNT1" 2>/dev/null || true
     umount "$MNT2" 2>/dev/null || true
     rmdir "$MNT1" "$MNT2" 2>/dev/null || true
@@ -106,6 +108,33 @@ if [ "${INSTALL_VNC:-0}" != "0" ]; then
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
 fi
 
+BOOT_DIR=$(mktemp -d)
+mkdir -p "$BOOT_DIR/isolinux"
+cp "$VMLINUZ" "$BOOT_DIR/isolinux/vmlinuz"
+cp "$INITRD" "$BOOT_DIR/isolinux/initrd.img"
+if [ -f "$MNT1/isolinux/isolinux.bin" ]; then
+    cp "$MNT1/isolinux/isolinux.bin" "$BOOT_DIR/isolinux/isolinux.bin"
+else
+    cp /usr/lib/ISOLINUX/isolinux.bin "$BOOT_DIR/isolinux/isolinux.bin"
+fi
+cat > "$BOOT_DIR/isolinux/isolinux.cfg" << EOF
+default linux
+prompt 0
+timeout 1
+label linux
+  kernel vmlinuz
+  append initrd=initrd.img $APPEND_ARGS
+EOF
+BOOT_ISO=$(mktemp --suffix=.iso)
+genisoimage -quiet -o "$BOOT_ISO" \
+    -b isolinux/isolinux.bin \
+    -c isolinux/boot.cat \
+    -no-emul-boot \
+    -boot-load-size 4 \
+    -boot-info-table \
+    "$BOOT_DIR"
+rm -rf "$BOOT_DIR"
+
 echo "Installer boot mode: $INSTALL_BOOT"
 echo "Installer append args: $APPEND_ARGS"
 
@@ -114,12 +143,11 @@ if [ "$INSTALL_BOOT" = "direct" ]; then
         -m 512 \
         -hda "$DISK" \
         -fda "$KS_FLOPPY" \
+        -cdrom "$BOOT_ISO" \
+        -boot d \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device ne2k_pci,netdev=net0 \
         $CPU_FLAG \
-        -kernel "$VMLINUZ" \
-        -initrd "$INITRD" \
-        -append "$APPEND_ARGS" \
         $DISPLAY_ARGS \
         -no-reboot
 else

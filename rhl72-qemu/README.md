@@ -45,7 +45,7 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer defaults to the extracted kernel/initrd direct-boot path so kickstart arguments can be passed automatically. To boot from disc 1's ISO boot path for manual debugging:
+The installer defaults to a generated mini boot ISO that uses the extracted RHL installer kernel/initrd and an `isolinux.cfg` containing the kickstart arguments. To boot from disc 1's original ISO boot path for manual debugging:
 
 ```bash
 INSTALL_BOOT=iso INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
