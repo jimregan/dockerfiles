@@ -27,6 +27,12 @@ At minimum, `rpmbuild/SPECS` must contain one `.spec` file before running the bu
 
 ## Build the Installed VM
 
+To remove stale containers/images from earlier attempts:
+
+```bash
+./clean.sh
+```
+
 This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images.
 
 ```bash
