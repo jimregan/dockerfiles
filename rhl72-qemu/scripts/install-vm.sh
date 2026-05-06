@@ -7,6 +7,7 @@ set -euxo pipefail
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
+INSTALL_BOOT=${INSTALL_BOOT:-iso}
 
 for ISO in "$DISC1" "$DISC2"; do
     [ -f "$ISO" ] || { echo "Missing: $ISO"; exit 1; }
@@ -86,25 +87,43 @@ qemu-img create -f qcow2 "$DISK" 8G
 
 CPU_FLAG=$(qemu_install_cpu_args)
 DISPLAY_ARGS="-display none -serial stdio"
+APPEND_ARGS="text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=ttyS0,9600n8"
 NOVNC_PID=""
 if [ "${INSTALL_VNC:-0}" != "0" ]; then
     DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
+    APPEND_ARGS="text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp"
     websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
     NOVNC_PID=$!
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
 fi
 
-qemu-system-i386 \
-    -m 512 \
-    -hda "$DISK" \
-    -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device ne2k_pci,netdev=net0 \
-    $CPU_FLAG \
-    -kernel "$VMLINUZ" \
-    -initrd "$INITRD" \
-    -append "text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=tty0 console=ttyS0,9600n8" \
-    $DISPLAY_ARGS \
-    -no-reboot
+echo "Installer boot mode: $INSTALL_BOOT"
+echo "Installer append args: $APPEND_ARGS"
+
+if [ "$INSTALL_BOOT" = "direct" ]; then
+    qemu-system-i386 \
+        -m 512 \
+        -hda "$DISK" \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device ne2k_pci,netdev=net0 \
+        $CPU_FLAG \
+        -kernel "$VMLINUZ" \
+        -initrd "$INITRD" \
+        -append "$APPEND_ARGS" \
+        $DISPLAY_ARGS \
+        -no-reboot
+else
+    qemu-system-i386 \
+        -m 512 \
+        -hda "$DISK" \
+        -cdrom "$DISC1" \
+        -boot d \
+        -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+        -device ne2k_pci,netdev=net0 \
+        $CPU_FLAG \
+        $DISPLAY_ARGS \
+        -no-reboot
+fi
 
 [ -n "$NOVNC_PID" ] && kill "$NOVNC_PID" 2>/dev/null || true
 require_bootable_disk "$DISK"
