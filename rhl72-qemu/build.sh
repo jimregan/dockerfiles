@@ -9,6 +9,7 @@ INSTALL_BOOT=${INSTALL_BOOT:-direct}
 BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
+KS_ARG=${KS_ARG:-ks=http://10.0.2.2:8081/ks.cfg}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -32,6 +33,7 @@ CID=$(docker run -d --privileged $KVM $PORTS \
     -e BOOT_IMAGE="$BOOT_IMAGE" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
+    -e KS_ARG="$KS_ARG" \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

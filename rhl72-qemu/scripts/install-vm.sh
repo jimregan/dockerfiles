@@ -8,7 +8,8 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-6
+INSTALL_SCRIPT_REV=20260506-9
+KS_ARG=${KS_ARG:-ks=http://10.0.2.2:8081/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -102,6 +103,13 @@ EOF
 python3 /tmp/serve.py &
 HTTP_PID=$!
 
+# Serve kickstart separately. With bootnet.img, HTTP kickstart avoids old
+# Anaconda's inconsistent floppy/file kickstart lookup behavior.
+mkdir -p /tmp/ks
+cp /rhl72/kickstart.cfg /tmp/ks/ks.cfg
+python3 -m http.server 8081 --directory /tmp/ks &
+KS_PID=$!
+
 # Put kickstart on a virtual floppy. RHL 7.2 Anaconda is much more reliable
 # with ks=floppy than with fetching ks.cfg over early installer networking.
 KS_FLOPPY=$(mktemp)
@@ -118,11 +126,11 @@ qemu-img create -f qcow2 "$DISK" 8G
 CPU_FLAG=$(qemu_install_cpu_args)
 INSTALL_MEM=${INSTALL_MEM:-256}
 DISPLAY_ARGS="-display none -serial stdio"
-APPEND_ARGS="text ks=file:/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
+APPEND_ARGS="text $KS_ARG method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
 NOVNC_PID=""
 if [ "${INSTALL_VNC:-0}" != "0" ]; then
     DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
-    APPEND_ARGS="text ks=file:/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
+    APPEND_ARGS="text $KS_ARG method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
     websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
     NOVNC_PID=$!
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
@@ -152,6 +160,8 @@ if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
     INITRDMNT=$(mktemp -d)
     mount -o loop "$INITRD_IMG" "$INITRDMNT"
     cp /rhl72/kickstart.cfg "$INITRDMNT/ks.cfg"
+    mkdir -p "$INITRDMNT/tmp"
+    cp /rhl72/kickstart.cfg "$INITRDMNT/tmp/ks.cfg"
     umount "$INITRDMNT"
     rmdir "$INITRDMNT"
     gzip -9 "$INITRD_IMG"
@@ -182,6 +192,7 @@ else
 fi
 
 echo "Installer boot mode: $INSTALL_BOOT"
+echo "Installer kickstart arg: $KS_ARG"
 echo "Installer append args: $APPEND_ARGS"
 echo "Installer memory: ${INSTALL_MEM}M"
 echo "Installer CPU args: $CPU_FLAG"
