@@ -4,6 +4,7 @@ set -euo pipefail
 ISO_DIR=${ISO_DIR:?Please set ISO_DIR to the directory containing your RHL 7.2 ISOs}
 ROOT_PASSWORD=${ROOT_PASSWORD:-rootpassword}
 INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
+INSTALL_VNC=${INSTALL_VNC:-0}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -14,12 +15,15 @@ docker build -f Dockerfile.base -t rhl72-base .
 echo "Running RHL 7.2 installer (no KVM = slow)..."
 KVM=""
 [ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
+PORTS=""
+[ "$INSTALL_VNC" != "0" ] && PORTS="-p 6080:6080"
 
-CID=$(docker run -d --privileged $KVM \
+CID=$(docker run -d --privileged $KVM $PORTS \
     -v "$ISO_DIR":/rhl72/isos:ro \
     -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
+    -e INSTALL_VNC="$INSTALL_VNC" \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

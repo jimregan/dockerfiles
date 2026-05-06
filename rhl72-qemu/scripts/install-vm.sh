@@ -85,6 +85,14 @@ KS_PID=$!
 qemu-img create -f qcow2 "$DISK" 8G
 
 CPU_FLAG=$(qemu_install_cpu_args)
+DISPLAY_ARGS="-display none -serial stdio"
+NOVNC_PID=""
+if [ "${INSTALL_VNC:-0}" != "0" ]; then
+    DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
+    websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
+    NOVNC_PID=$!
+    echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
+fi
 
 qemu-system-i386 \
     -m 512 \
@@ -95,9 +103,9 @@ qemu-system-i386 \
     -kernel "$VMLINUZ" \
     -initrd "$INITRD" \
     -append "text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=tty0 console=ttyS0,9600n8" \
-    -display none \
-    -serial stdio \
+    $DISPLAY_ARGS \
     -no-reboot
 
+[ -n "$NOVNC_PID" ] && kill "$NOVNC_PID" 2>/dev/null || true
 require_bootable_disk "$DISK"
 echo "Install complete: $DISK"

@@ -39,6 +39,12 @@ The installer defaults to software CPU emulation with a Pentium III CPU model be
 INSTALL_USE_KVM=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
+If the installer appears stuck, run it with noVNC enabled and open `http://server:6080/vnc.html`:
+
+```bash
+INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
+```
+
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
 ```bash
