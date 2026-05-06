@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-19
+INSTALL_SCRIPT_REV=20260506-20
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -146,7 +146,20 @@ printf '%s\n' '/export/ks 10.0.2.0/24(ro,sync,insecure,no_subtree_check,no_root_
 mkdir -p /run/rpcbind /proc/fs/nfsd
 modprobe nfsd 2>/dev/null || true
 if ! mountpoint -q /proc/fs/nfsd; then
-    run_step mount-nfsd mount -t nfsd nfsd /proc/fs/nfsd
+    INSTALL_STATUS="mount-nfsd"
+    INSTALL_ERROR="mount-nfsd started but did not complete"
+    echo "Running step: mount-nfsd: mount -t nfsd nfsd /proc/fs/nfsd"
+    set +e
+    mount -t nfsd nfsd /proc/fs/nfsd 2>/tmp/mount-nfsd.err
+    rc=$?
+    set -e
+    if [ "$rc" != "0" ]; then
+        mount_error=$(cat /tmp/mount-nfsd.err 2>/dev/null || true)
+        printf '%s\n' "$mount_error"
+        INSTALL_ERROR="mount-nfsd failed rc=$rc: $mount_error"
+        exit "$rc"
+    fi
+    INSTALL_ERROR=""
 fi
 INSTALL_STATUS="start-rpcbind"
 rpcbind -w -f &
