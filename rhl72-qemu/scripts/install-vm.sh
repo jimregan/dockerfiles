@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-15
+INSTALL_SCRIPT_REV=20260506-16
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -25,6 +25,7 @@ KS_FLOPPY=""
 BOOT_FLOPPY=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
+INSTALL_ERROR=""
 RPCBIND_PID=""
 MOUNTD_PID=""
 
@@ -47,6 +48,7 @@ cleanup() {
         echo "=== RHL72 INSTALL FAILURE SUMMARY ==="
         echo "script_revision=$INSTALL_SCRIPT_REV"
         echo "status=$INSTALL_STATUS"
+        echo "error=${INSTALL_ERROR:-unset}"
         echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
         echo "install_boot=$INSTALL_BOOT"
         echo "boot_image=${BOOT_IMAGE:-unset}"
@@ -116,20 +118,49 @@ cp /rhl72/kickstart.cfg /tmp/ks/ks.cfg
 python3 -m http.server 8081 --directory /tmp/ks &
 KS_PID=$!
 
+run_step() {
+    local status=$1
+    shift
+    INSTALL_STATUS="$status"
+    echo "Running step: $status: $*"
+    if ! "$@"; then
+        INSTALL_ERROR="$status failed: $*"
+        return 1
+    fi
+}
+
 # RHL 7.2's documented network kickstart path is NFS. QEMU user networking
 # exposes the container as 10.0.2.2 to the guest.
+INSTALL_STATUS="starting-nfs-kickstart"
 mkdir -p /export/ks
 cp /rhl72/kickstart.cfg /export/ks/ks.cfg
 printf '%s\n' '/export/ks *(ro,sync,insecure,no_subtree_check,no_root_squash)' > /etc/exports
 mkdir -p /run/rpcbind /proc/fs/nfsd
-mount -t nfsd nfsd /proc/fs/nfsd 2>/dev/null || true
+modprobe nfsd 2>/dev/null || true
+if ! mountpoint -q /proc/fs/nfsd; then
+    run_step mount-nfsd mount -t nfsd nfsd /proc/fs/nfsd
+fi
+INSTALL_STATUS="start-rpcbind"
 rpcbind -w &
 RPCBIND_PID=$!
 sleep 1
-exportfs -ra
-rpc.nfsd 8
+if ! kill -0 "$RPCBIND_PID" 2>/dev/null; then
+    INSTALL_ERROR="rpcbind exited during startup"
+    INSTALL_STATUS="start-rpcbind"
+    exit 1
+fi
+run_step export-nfs exportfs -ra
+run_step start-nfsd rpc.nfsd 8
+run_step show-exports exportfs -v
 rpc.mountd -F &
 MOUNTD_PID=$!
+sleep 1
+if ! kill -0 "$MOUNTD_PID" 2>/dev/null; then
+    INSTALL_ERROR="rpc.mountd exited during startup"
+    INSTALL_STATUS="start-mountd"
+    exit 1
+fi
+INSTALL_STATUS="nfs-kickstart-ready"
 
 # Put kickstart on a virtual floppy. RHL 7.2 Anaconda is much more reliable
 # with ks=floppy than with fetching ks.cfg over early installer networking.
