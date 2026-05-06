@@ -13,10 +13,11 @@ qemu_kvm_args() {
 }
 
 qemu_install_cpu_args() {
+    local cpu=${INSTALL_CPU:-pentium2}
     if [ "${INSTALL_USE_KVM:-0}" != "0" ] && [ -e /dev/kvm ]; then
-        printf '%s\n' "-enable-kvm -cpu pentium3"
+        printf '%s\n' "-enable-kvm -cpu $cpu"
     else
-        printf '%s\n' "-cpu pentium3"
+        printf '%s\n' "-cpu $cpu"
     fi
 }
 

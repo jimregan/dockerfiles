@@ -97,6 +97,7 @@ rmdir "$KSMNT"
 qemu-img create -f qcow2 "$DISK" 8G
 
 CPU_FLAG=$(qemu_install_cpu_args)
+INSTALL_MEM=${INSTALL_MEM:-256}
 DISPLAY_ARGS="-display none -serial stdio"
 APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=ttyS0,9600n8"
 NOVNC_PID=""
@@ -109,6 +110,7 @@ if [ "${INSTALL_VNC:-0}" != "0" ]; then
 fi
 
 BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
+echo "Installer boot floppy image: $BOOT_IMAGE"
 
 if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
     BOOT_FLOPPY=$(mktemp)
@@ -146,10 +148,12 @@ fi
 
 echo "Installer boot mode: $INSTALL_BOOT"
 echo "Installer append args: $APPEND_ARGS"
+echo "Installer memory: ${INSTALL_MEM}M"
+echo "Installer CPU args: $CPU_FLAG"
 
 if [ "$INSTALL_BOOT" = "direct" ]; then
     qemu-system-i386 \
-        -m 512 \
+        -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
         -drive file="$KS_FLOPPY",format=raw,if=floppy,index=1 \
@@ -161,7 +165,7 @@ if [ "$INSTALL_BOOT" = "direct" ]; then
         -no-reboot
 else
     qemu-system-i386 \
-        -m 512 \
+        -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$KS_FLOPPY",format=raw,if=floppy,index=0 \
         -drive file="$DISC1",format=raw,if=ide,index=2,media=cdrom \
