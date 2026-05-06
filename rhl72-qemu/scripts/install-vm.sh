@@ -7,7 +7,7 @@
 #
 # Or with defaults (ISOs in /rhl72/isos/):
 #   ./install-vm.sh
-set -euo pipefail
+set -euxo pipefail
 
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
