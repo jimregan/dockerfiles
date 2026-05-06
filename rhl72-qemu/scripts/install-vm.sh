@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-16
+INSTALL_SCRIPT_REV=20260506-17
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -141,7 +141,7 @@ if ! mountpoint -q /proc/fs/nfsd; then
     run_step mount-nfsd mount -t nfsd nfsd /proc/fs/nfsd
 fi
 INSTALL_STATUS="start-rpcbind"
-rpcbind -w &
+rpcbind -w -f &
 RPCBIND_PID=$!
 sleep 1
 if ! kill -0 "$RPCBIND_PID" 2>/dev/null; then
