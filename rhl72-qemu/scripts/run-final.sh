@@ -4,12 +4,14 @@
 # The VM will start an X session with Mozilla on boot.
 set -euo pipefail
 
+. /rhl72/scripts/common.sh
+
 DISK=/disk/rhl72.qcow2
 
-KVM_FLAG=""
-[ -e /dev/kvm ] && KVM_FLAG="-enable-kvm -cpu host"
+KVM_FLAG=$(qemu_kvm_args)
 
 echo "noVNC available at: http://localhost:6080/vnc.html"
+echo "SSH forwarded to port 2222."
 
 qemu-system-i386 \
     -m 256 \
@@ -20,6 +22,8 @@ qemu-system-i386 \
     -vnc 127.0.0.1:0 &
 
 QEMU_PID=$!
+
+trap "kill $QEMU_PID 2>/dev/null || true" EXIT
 
 websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900
 

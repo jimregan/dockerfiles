@@ -1,19 +1,9 @@
-## Stage 1: build the Tcl Plugin RPM inside a RHL 7.2 VM
-FROM rhl72-installed AS rpm-builder
+FROM rhl72-installed
 
-COPY rpmbuild/ /rpmbuild/
-
-# Boots QEMU headlessly, SSHes in, runs rpmbuild, copies the RPM to /output/
-RUN bash /rhl72/scripts/build-rpm-in-vm.sh
-
-## Stage 2: install the RPM into a fresh copy of the disk
-FROM rhl72-installed AS final
-
-COPY --from=rpm-builder /output/ /rpms/
-
-# Boots QEMU headlessly, installs the RPM, shuts the VM down cleanly
+COPY output/ /rpms/
 RUN bash /rhl72/scripts/install-rpm-in-vm.sh
 
 EXPOSE 6080
+EXPOSE 2222
 
 CMD ["bash", "/rhl72/scripts/run-final.sh"]

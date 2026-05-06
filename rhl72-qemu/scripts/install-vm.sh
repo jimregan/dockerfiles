@@ -2,6 +2,8 @@
 # Install RHL 7.2 into a qcow2 disk image.
 set -euxo pipefail
 
+. /rhl72/scripts/common.sh
+
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
@@ -13,9 +15,11 @@ done
 MNT1=$(mktemp -d)
 MNT2=$(mktemp -d)
 HTTP_PID=""
+KS_PID=""
 
 cleanup() {
     [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
+    [ -n "$KS_PID" ] && kill "$KS_PID" 2>/dev/null || true
     umount "$MNT1" 2>/dev/null || true
     umount "$MNT2" 2>/dev/null || true
     rmdir "$MNT1" "$MNT2" 2>/dev/null || true
@@ -80,8 +84,7 @@ KS_PID=$!
 
 qemu-img create -f qcow2 "$DISK" 8G
 
-KVM_FLAG=""
-[ -e /dev/kvm ] && KVM_FLAG="-enable-kvm -cpu host"
+KVM_FLAG=$(qemu_kvm_args)
 
 qemu-system-i386 \
     -m 512 \
@@ -95,5 +98,4 @@ qemu-system-i386 \
     -nographic \
     -serial mon:stdio
 
-kill $KS_PID 2>/dev/null || true
 echo "Install complete: $DISK"

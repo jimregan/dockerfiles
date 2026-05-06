@@ -2,19 +2,23 @@
 # Boot the VM headlessly, copy in the spec file, run rpmbuild, copy out the RPM.
 set -euo pipefail
 
+. /rhl72/scripts/common.sh
+
 DISK=/disk/rhl72.qcow2
 SPEC_SRC=/rpmbuild
 RPM_OUT=/output
-SSH="ssh -p 2222 -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@localhost"
-SCP="scp -P 2222 -o StrictHostKeyChecking=no"
 
 mkdir -p "$RPM_OUT"
 
-KVM_FLAG=""
-[ -e /dev/kvm ] && KVM_FLAG="-enable-kvm -cpu host"
+if ! find "$SPEC_SRC/SPECS" -maxdepth 1 -name '*.spec' -print -quit 2>/dev/null | grep -q .; then
+    echo "No spec file found under $SPEC_SRC/SPECS."
+    exit 1
+fi
+
+KVM_FLAG=$(qemu_kvm_args)
 
 qemu-system-i386 \
-    -m 256 \
+    -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
@@ -26,25 +30,20 @@ qemu-system-i386 \
 QEMU_PID=$!
 trap "kill $QEMU_PID 2>/dev/null" EXIT
 
-echo "Waiting for VM to boot and SSH to become available..."
-for i in $(seq 1 60); do
-    $SSH "echo ready" 2>/dev/null && break
-    sleep 5
-    echo "  attempt $i/60..."
-done
-
-$SSH "echo ready" || { echo "VM did not come up in time"; exit 1; }
+wait_for_ssh
 
 echo "Copying build files..."
-$SCP -r "$SPEC_SRC"/* root@localhost:/root/rpmbuild/
+ssh_cmd "rm -rf /root/rpmbuild && mkdir -p /root/rpmbuild"
+scp_to_guest -r "$SPEC_SRC"/. "root@${SSH_HOST}:/root/rpmbuild/"
 
 echo "Running rpmbuild inside VM..."
-$SSH "cd /root && rpmbuild -ba rpmbuild/SPECS/*.spec" 2>&1
+ssh_cmd "cd /root && rpmbuild -ba rpmbuild/SPECS/*.spec" 2>&1
 
 echo "Retrieving built RPMs..."
-$SCP "root@localhost:/root/rpmbuild/RPMS/i386/*.rpm" "$RPM_OUT/"
+scp_to_guest "root@${SSH_HOST}:/root/rpmbuild/RPMS/i386/*.rpm" "$RPM_OUT/"
 
 echo "Done. RPMs are in $RPM_OUT:"
 ls -lh "$RPM_OUT"/*.rpm
 
-kill $QEMU_PID
+shutdown_guest
+wait $QEMU_PID || true

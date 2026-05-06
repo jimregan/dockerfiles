@@ -3,9 +3,14 @@
 # The committed container layer will contain the updated disk image.
 set -euo pipefail
 
+. /rhl72/scripts/common.sh
+
 DISK=/disk/rhl72.qcow2
-SSH="ssh -p 2222 -o StrictHostKeyChecking=no -o ConnectTimeout=3 root@localhost"
-SCP="scp -P 2222 -o StrictHostKeyChecking=no"
+
+if ! find /rpms -maxdepth 1 -name '*.rpm' -print -quit 2>/dev/null | grep -q .; then
+    echo "No RPMs found in /rpms. Run the builder first so ./output contains RPMs."
+    exit 1
+fi
 
 qemu-system-i386 \
     -m 512 \
@@ -19,16 +24,21 @@ qemu-system-i386 \
 QEMU_PID=$!
 trap "kill $QEMU_PID 2>/dev/null || true" EXIT
 
-echo "Waiting for VM..."
-for i in $(seq 1 60); do
-    $SSH true 2>/dev/null && break
-    sleep 5
-done
-$SSH true || { echo "VM did not come up"; exit 1; }
+wait_for_ssh
 
-$SCP /rpms/*.rpm root@localhost:/tmp/
-$SSH "rpm -Uvh /tmp/*.rpm"
-$SSH "shutdown -h now" || true
+scp_to_guest /rpms/*.rpm "root@${SSH_HOST}:/tmp/"
+ssh_cmd "rpm -Uvh /tmp/*.rpm"
+ssh_cmd "cat > /root/.xinitrc <<'EOF'
+mozilla
+EOF
+chmod +x /root/.xinitrc
+grep -q 'startx -- :0' /etc/rc.d/rc.local || cat >> /etc/rc.d/rc.local <<'EOF'
+
+if [ -x /usr/X11R6/bin/startx ]; then
+    su - root -c 'startx -- :0' >/var/log/startx.log 2>&1 &
+fi
+EOF"
+shutdown_guest
 wait $QEMU_PID || true
 
 echo "RPM installed into disk image."

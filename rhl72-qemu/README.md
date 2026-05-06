@@ -1,84 +1,93 @@
 # RHL 7.2 in QEMU in Docker
 
-Historical recreation: Red Hat Linux 7.2 running Netscape with the Tcl Plugin —
-the NPAPI plugin that embedded Tcl/Tk scripts in web pages (think Java applets, but Tcl).
+This repo builds a Red Hat Linux 7.2 VM image and wraps it in three Docker images:
 
-## About the Tcl Plugin
+- `rhl72-interactive`: boots the installed RHL 7.2 VM with noVNC and SSH so you can debug the old Tcl plugin build manually.
+- `rhl72-builder`: boots a clean copy of that VM, copies in `./rpmbuild`, runs `rpmbuild`, and writes RPMs to `./output`.
+- `rhl72-final`: starts from the clean installed VM, installs the RPMs from `./output`, and boots Mozilla with the Tcl plugin installed.
 
-The plugin was developed at Sun Microsystems and lets pages use `<EMBED type="application/x-tcl">` 
-to run Tcl/Tk scripts inside the browser window. The built artifact is a shared library 
-(`nsplugin.so`) installed into Mozilla's plugins directory (`/usr/lib/mozilla/plugins/`).
+The RHL VM disk is created once into an intermediate Docker image named `rhl72-installed`. The three images above inherit that disk.
 
-RHL 7.2 ships Mozilla 0.9.4, which uses the same NPAPI interface as Netscape 4.x.
+## Inputs
 
-Build dependencies: `tcl-devel`, `tk-devel`, `XFree86-devel`, and the NPAPI headers
-(`npapi.h` etc.). The headers come from the Mozilla source tree — they may or may not be
-included in the `mozilla` RPM on the ISOs; if not, grab them from the Mozilla 0.9.4 source
-tarball on archive.org.
+Put the Red Hat Linux 7.2 install ISOs on the host and point `ISO_DIR` at them. The installer script expects:
 
-Source: the Tcl Plugin source was hosted on SourceForge; archive.org has historical tarballs.
-The 2.x series targets the NPAPI interface used by both Netscape 4.x and early Mozilla.
+- `disc1.iso`
+- `disc2.iso`
 
-## Prerequisites
+The old Tcl plugin RPM inputs should use the normal rpmbuild layout under `./rpmbuild`:
 
-- The three RHL 7.2 ISOs placed in `./isos/` as `disc1.iso`, `disc2.iso`, `disc3.iso`
-- Docker with `--privileged` support and `/dev/kvm` available on the host
-
-## First-time setup
-
-### 1. Build the base image
-
-```bash
-docker build -f Dockerfile.base -t rhl72-base .
+```text
+rpmbuild/
+  SOURCES/
+  SPECS/
 ```
 
-### 2. Prepare the install tree and extract the boot kernel
+At minimum, `rpmbuild/SPECS` must contain one `.spec` file before running the builder.
 
-Run these on the **host** (they need loop mount access):
+## Build the Installed VM
 
-```bash
-# Combine the three ISOs into a single package tree
-sudo ./scripts/prep-tree.sh isos/disc1.iso isos/disc2.iso isos/disc3.iso ./tree
-
-# Pull out the installer kernel/initrd from disc1
-sudo ./scripts/extract-boot.sh isos/disc1.iso ./isos
-
-# Serve the tree and kickstart file over HTTP on port 8080
-# (QEMU guest will reach this as 10.0.2.2:8080)
-python3 -m http.server 8080 --directory .
-```
-
-### 3. Install the VM
+This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images.
 
 ```bash
-# This writes disk/rhl72.qcow2 (persisted in the Docker volume)
-docker compose run --rm interactive /rhl72/scripts/install-vm.sh
+ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-## Interactive development (Image 1)
+The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
+
+```bash
+ROOT_PASSWORD=your-password ISO_DIR=/path/to/rhl72-isos ./build.sh
+```
+
+## Image 1: Interactive Development
 
 ```bash
 docker compose up interactive
-# Connect VNC client to localhost:5900
-# Or SSH: ssh -p 2222 root@localhost   (password: rootpassword)
 ```
 
-Use this session to:
-- Find the mod_tcl source version that works with Apache 1.3 + Tcl 8.3
-- Work out the `rpmbuild` invocation
-- Write the `.spec` file into `rpmbuild/SPECS/`
+Access:
 
-## Automated build (Image 2)
+- noVNC: `http://localhost:6080/vnc.html`
+- SSH: `ssh -p 2222 root@localhost`
 
-Once the spec file is in `rpmbuild/SPECS/`:
+Use this VM to work out the source tarball, build dependencies, spec file, and `rpmbuild` invocation. Put the resulting files in the host `./rpmbuild` tree so the automated builder can use them.
+
+## Image 2: RPM Builder
 
 ```bash
-# Copy the developed disk image out of the volume first
-docker run --rm -v rhl72-disk:/disk -v $(pwd)/disk:/out \
-    alpine cp /disk/rhl72.qcow2 /out/rhl72.qcow2
-
-# Build the automated image and run it
-docker build -f Dockerfile.build -t rhl72-build .
-docker compose --profile build run --rm build
-# Output RPM will be in ./output/
+docker compose --profile build build builder
+docker compose --profile build run --rm builder
 ```
+
+The builder mounts:
+
+- `./rpmbuild` read-only at `/rpmbuild`
+- `./output` at `/output`
+
+On success, RPMs are copied to `./output`.
+
+## Image 3: Final Mozilla Runtime
+
+Build this only after the builder has produced RPMs in `./output`. If `./output` contains no RPMs, the final image build stops with an explicit error.
+
+```bash
+docker compose --profile final build final
+docker compose --profile final up final
+```
+
+Access:
+
+- noVNC: `http://localhost:6080/vnc.html`
+- SSH: `ssh -p 2222 root@localhost`
+
+During the final image build, the RPMs are installed into the guest disk and `/root/.xinitrc` is configured to launch Mozilla. On boot, the VM starts X on QEMU's VNC display.
+
+## Tcl Plugin Notes
+
+RHL 7.2 ships Mozilla 0.9.4, which uses the NPAPI plugin interface. The target plugin artifact should be installed by the RPM into Mozilla's plugin directory, usually:
+
+```text
+/usr/lib/mozilla/plugins/
+```
+
+The historical Tcl plugin build usually needs Tcl/Tk headers, X11 headers, and NPAPI headers. The kickstart installs the RHL-side Tcl/Tk, XFree86, Mozilla, compiler, and rpm-build packages; if Mozilla's RPM does not include the NPAPI headers, put the matching Mozilla 0.9.4 headers in `rpmbuild/SOURCES` and reference them from the spec.

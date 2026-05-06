@@ -11,6 +11,22 @@ services:
     ports:
       - "6080:6080"
       - "2222:2222"
+    volumes:
+      - ./rpmbuild:/workspace/rpmbuild
+
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.builder
+    image: rhl72-builder
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    volumes:
+      - ./rpmbuild:/rpmbuild:ro
+      - ./output:/output
+    profiles:
+      - build
 
   final:
     build:
@@ -22,5 +38,6 @@ services:
       - /dev/kvm:/dev/kvm
     ports:
       - "6080:6080"
+      - "2222:2222"
     profiles:
       - final
