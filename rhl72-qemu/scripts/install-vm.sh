@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-20
+INSTALL_SCRIPT_REV=20260506-21
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -28,6 +28,7 @@ INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
 RPCBIND_PID=""
 MOUNTD_PID=""
+KS_EXPORT_MOUNTED=0
 
 cleanup() {
     local exit_code=$?
@@ -36,6 +37,9 @@ cleanup() {
     [ -n "$MOUNTD_PID" ] && kill "$MOUNTD_PID" 2>/dev/null || true
     rpc.nfsd 0 2>/dev/null || true
     exportfs -ua 2>/dev/null || true
+    if [ "$KS_EXPORT_MOUNTED" = "1" ]; then
+        umount /export/ks 2>/dev/null || true
+    fi
     [ -n "$RPCBIND_PID" ] && kill "$RPCBIND_PID" 2>/dev/null || true
     [ -n "$KS_FLOPPY" ] && rm -f "$KS_FLOPPY" 2>/dev/null || true
     [ -n "$BOOT_FLOPPY" ] && rm -f "$BOOT_FLOPPY" 2>/dev/null || true
@@ -141,6 +145,8 @@ run_step() {
 # exposes the container as 10.0.2.2 to the guest.
 INSTALL_STATUS="starting-nfs-kickstart"
 mkdir -p /export/ks
+mount -t tmpfs -o size=1m tmpfs /export/ks
+KS_EXPORT_MOUNTED=1
 cp /rhl72/kickstart.cfg /export/ks/ks.cfg
 printf '%s\n' '/export/ks 10.0.2.0/24(ro,sync,insecure,no_subtree_check,no_root_squash,fsid=0)' > /etc/exports
 mkdir -p /run/rpcbind /proc/fs/nfsd
