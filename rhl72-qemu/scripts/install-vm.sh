@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-21
+INSTALL_SCRIPT_REV=20260506-22
 KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -176,7 +176,24 @@ if ! kill -0 "$RPCBIND_PID" 2>/dev/null; then
     INSTALL_STATUS="start-rpcbind"
     exit 1
 fi
-run_step export-nfs exportfs -ra
+INSTALL_STATUS="export-nfs"
+INSTALL_ERROR="export-nfs started but did not complete"
+echo "Running step: export-nfs: exportfs -ra"
+set +e
+exportfs -ra >/tmp/exportfs.out 2>/tmp/exportfs.err
+rc=$?
+set -e
+if [ "$rc" != "0" ]; then
+    export_output=$(cat /tmp/exportfs.out /tmp/exportfs.err 2>/dev/null || true)
+    mount_output=$(findmnt /export/ks 2>/dev/null || true)
+    exports_file=$(cat /etc/exports 2>/dev/null || true)
+    printf '%s\n' "$export_output"
+    printf 'findmnt /export/ks:\n%s\n' "$mount_output"
+    printf '/etc/exports:\n%s\n' "$exports_file"
+    INSTALL_ERROR="export-nfs failed rc=$rc: $export_output | findmnt: $mount_output | exports: $exports_file"
+    exit "$rc"
+fi
+INSTALL_ERROR=""
 run_step start-nfsd rpc.nfsd 8
 run_step show-exports exportfs -v
 rpc.mountd -F &
