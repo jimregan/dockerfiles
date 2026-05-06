@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-5
+INSTALL_SCRIPT_REV=20260506-6
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -118,11 +118,11 @@ qemu-img create -f qcow2 "$DISK" 8G
 CPU_FLAG=$(qemu_install_cpu_args)
 INSTALL_MEM=${INSTALL_MEM:-256}
 DISPLAY_ARGS="-display none -serial stdio"
-APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
+APPEND_ARGS="text ks=file:/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
 NOVNC_PID=""
 if [ "${INSTALL_VNC:-0}" != "0" ]; then
     DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
-    APPEND_ARGS="text ks=floppy method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
+    APPEND_ARGS="text ks=file:/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
     websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
     NOVNC_PID=$!
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
@@ -143,6 +143,20 @@ if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
         rmdir "$BOOTMNT"
         exit 1
     fi
+
+    INITRD_WORK=$(mktemp -d)
+    INITRD_GZ="$INITRD_WORK/initrd.img.gz"
+    INITRD_IMG="$INITRD_WORK/initrd.img"
+    cp "$BOOTMNT/initrd.img" "$INITRD_GZ"
+    gunzip "$INITRD_GZ"
+    INITRDMNT=$(mktemp -d)
+    mount -o loop "$INITRD_IMG" "$INITRDMNT"
+    cp /rhl72/kickstart.cfg "$INITRDMNT/ks.cfg"
+    umount "$INITRDMNT"
+    rmdir "$INITRDMNT"
+    gzip -9 "$INITRD_IMG"
+    cp "$INITRD_IMG.gz" "$BOOTMNT/initrd.img"
+    rm -rf "$INITRD_WORK"
 
     cat > "$BOOTMNT/syslinux.cfg" << EOF
 default linux
