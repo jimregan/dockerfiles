@@ -85,7 +85,8 @@ require_bootable_disk() {
         return 1
     fi
 
-    mbr=$(mktemp)
+    mbr=/tmp/rhl72-mbr.$$
+    rm -f "$mbr"
     if ! qemu-img dd -f qcow2 if="$disk" of="$mbr" bs=512 count=1 >/dev/null 2>&1; then
         rm -f "$mbr"
         echo "Cannot read the first sector of $disk."

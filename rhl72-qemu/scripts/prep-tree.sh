@@ -7,10 +7,12 @@ DISC1=${1:?Usage: prep-tree.sh disc1.iso disc2.iso}
 DISC2=${2:?}
 OUTDIR=${3:-/rhl72/tree}
 
-MNT=$(mktemp -d)
+MNT=${MNT:-/tmp/rhl72-prep-tree.$$}
 cleanup() { umount "$MNT" 2>/dev/null || true; rmdir "$MNT"; }
 trap cleanup EXIT
 
+rm -rf "$MNT"
+mkdir -p "$MNT"
 mkdir -p "$OUTDIR/RedHat/RPMS" "$OUTDIR/RedHat/base"
 
 for ISO in "$DISC1" "$DISC2"; do

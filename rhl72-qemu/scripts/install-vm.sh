@@ -16,9 +16,9 @@ for ISO in "$DISC1" "$DISC2"; do
     [ -f "$ISO" ] || { echo "Missing: $ISO"; exit 1; }
 done
 
-MNT1=$(mktemp -d)
-MNT2=$(mktemp -d)
-WORK=$(mktemp -d)
+WORK=${WORK:-/tmp/rhl72-install.$$}
+MNT1="$WORK/disc1"
+MNT2="$WORK/disc2"
 HTTP_PID=""
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
@@ -50,6 +50,9 @@ cleanup() {
     exit "$exit_code"
 }
 trap cleanup EXIT
+
+rm -rf "$WORK"
+mkdir -p "$MNT1" "$MNT2"
 
 mount -o loop,ro "$DISC1" "$MNT1"
 mount -o loop,ro "$DISC2" "$MNT2"
