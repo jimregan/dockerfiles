@@ -64,3 +64,30 @@ wait_for_ssh() {
 shutdown_guest() {
     ssh_cmd "shutdown -h now" || true
 }
+
+require_bootable_disk() {
+    local disk=${1:?disk path required}
+    local mbr
+    local signature
+
+    if [ ! -f "$disk" ]; then
+        echo "No disk image found at $disk. Run install-vm.sh first."
+        return 1
+    fi
+
+    mbr=$(mktemp)
+    if ! qemu-img dd -f qcow2 if="$disk" of="$mbr" bs=512 count=1 >/dev/null 2>&1; then
+        rm -f "$mbr"
+        echo "Cannot read the first sector of $disk."
+        return 1
+    fi
+
+    signature=$(tail -c 2 "$mbr" | od -An -tx1 | tr -d ' \n')
+    rm -f "$mbr"
+
+    if [ "$signature" != "55aa" ]; then
+        echo "$disk exists, but it does not contain a bootable MBR signature."
+        echo "The RHL 7.2 install likely did not complete. Re-run: ISO_DIR=/path/to/isos ./build.sh"
+        return 1
+    fi
+}

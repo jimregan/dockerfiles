@@ -6,6 +6,7 @@ set -euo pipefail
 . /rhl72/scripts/common.sh
 
 DISK=/disk/rhl72.qcow2
+require_bootable_disk "$DISK"
 
 if ! find /rpms -maxdepth 1 -name '*.rpm' -print -quit 2>/dev/null | grep -q .; then
     echo "No RPMs found in /rpms. Run the builder first so ./output contains RPMs."
@@ -17,6 +18,7 @@ qemu-system-i386 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
+    -boot order=c \
     -nographic \
     -serial null \
     -monitor none &

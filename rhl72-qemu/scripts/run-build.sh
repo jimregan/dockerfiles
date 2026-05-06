@@ -7,6 +7,7 @@ set -euo pipefail
 DISK=/disk/rhl72.qcow2
 SPEC_SRC=/rpmbuild
 RPM_OUT=/output
+require_bootable_disk "$DISK"
 
 mkdir -p "$RPM_OUT"
 
@@ -23,6 +24,7 @@ qemu-system-i386 \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
     $KVM_FLAG \
+    -boot order=c \
     -nographic \
     -serial null \
     -monitor unix:/tmp/qemu-monitor.sock,server,nowait &

@@ -7,6 +7,7 @@ set -euo pipefail
 . /rhl72/scripts/common.sh
 
 DISK=/disk/rhl72.qcow2
+require_bootable_disk "$DISK"
 
 KVM_FLAG=$(qemu_kvm_args)
 
@@ -19,6 +20,7 @@ qemu-system-i386 \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
     $KVM_FLAG \
+    -boot order=c \
     -vnc 127.0.0.1:0 &
 
 QEMU_PID=$!

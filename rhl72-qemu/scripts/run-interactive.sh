@@ -5,11 +5,7 @@ set -euo pipefail
 . /rhl72/scripts/common.sh
 
 DISK=${1:-/disk/rhl72.qcow2}
-
-if [ ! -f "$DISK" ]; then
-    echo "No disk image found at $DISK. Run install-vm.sh first."
-    exit 1
-fi
+require_bootable_disk "$DISK"
 
 if [ -e /dev/kvm ]; then
     echo "KVM available, using hardware acceleration."
@@ -28,6 +24,7 @@ qemu-system-i386 \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
     $KVM_FLAG \
+    -boot order=c \
     -vnc 127.0.0.1:0 \
     -monitor unix:/tmp/qemu-monitor.sock,server,nowait &
 
