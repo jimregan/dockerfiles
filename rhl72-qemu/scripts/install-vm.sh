@@ -121,16 +121,19 @@ if [ -f "$MNT1/images/boot.img" ]; then
         exit 1
     fi
 
-    sed -i "s|^default .*|default linux|" "$BOOTMNT/syslinux.cfg"
-    sed -i "s|^prompt .*|prompt 0|" "$BOOTMNT/syslinux.cfg"
-    sed -i "s|^timeout .*|timeout 1|" "$BOOTMNT/syslinux.cfg"
-    if grep -q '^append ' "$BOOTMNT/syslinux.cfg"; then
-        sed -i "0,/^append /s|^append .*|append initrd=initrd.img $APPEND_ARGS|" "$BOOTMNT/syslinux.cfg"
-    else
-        cat >> "$BOOTMNT/syslinux.cfg" << EOF
-append initrd=initrd.img $APPEND_ARGS
+    cat > "$BOOTMNT/syslinux.cfg" << EOF
+default linux
+prompt 0
+timeout 1
+label linux
+  kernel vmlinuz
+  append initrd=initrd.img $APPEND_ARGS
 EOF
-    fi
+    cp /rhl72/kickstart.cfg "$BOOTMNT/ks.cfg"
+    echo "Patched boot floppy syslinux.cfg:"
+    cat "$BOOTMNT/syslinux.cfg"
+    echo "Patched boot floppy files:"
+    find "$BOOTMNT" -maxdepth 1 -type f -printf '%f\n' | sort
     umount "$BOOTMNT"
     rmdir "$BOOTMNT"
 else
@@ -145,9 +148,9 @@ echo "Installer append args: $APPEND_ARGS"
 if [ "$INSTALL_BOOT" = "direct" ]; then
     qemu-system-i386 \
         -m 512 \
-        -hda "$DISK" \
-        -fda "$BOOT_FLOPPY" \
-        -fdb "$KS_FLOPPY" \
+        -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
+        -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
+        -drive file="$KS_FLOPPY",format=raw,if=floppy,index=1 \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device ne2k_pci,netdev=net0 \
@@ -157,9 +160,9 @@ if [ "$INSTALL_BOOT" = "direct" ]; then
 else
     qemu-system-i386 \
         -m 512 \
-        -hda "$DISK" \
-        -fda "$KS_FLOPPY" \
-        -cdrom "$DISC1" \
+        -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
+        -drive file="$KS_FLOPPY",format=raw,if=floppy,index=0 \
+        -drive file="$DISC1",format=raw,if=ide,index=2,media=cdrom \
         -boot d \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device ne2k_pci,netdev=net0 \
