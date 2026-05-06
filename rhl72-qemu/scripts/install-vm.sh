@@ -51,33 +51,31 @@ mount -o loop,ro "$DISC1" "$MNT"
 VMLINUZ="$TREE/vmlinuz"
 INITRD="$TREE/initrd.img"
 
-echo "Contents of images/ on disc1:"
-ls "$MNT/images/"
+echo "Looking for installer kernel on disc1..."
+find "$MNT" -maxdepth 3 \( -name "vmlinuz" -o -name "initrd.img" -o -name "ramdisk.img" \) | sort
 
-# RHL 7.2 (2001) uses images/ directly; pxeboot/ subdir came later
-if [ -f "$MNT/images/pxeboot/vmlinuz" ]; then
+if [ -f "$MNT/isolinux/vmlinuz" ]; then
+    echo "Using isolinux/"
+    cp "$MNT/isolinux/vmlinuz"    "$VMLINUZ"
+    cp "$MNT/isolinux/initrd.img" "$INITRD"
+elif [ -f "$MNT/images/pxeboot/vmlinuz" ]; then
     echo "Using images/pxeboot/"
     cp "$MNT/images/pxeboot/vmlinuz"    "$VMLINUZ"
     cp "$MNT/images/pxeboot/initrd.img" "$INITRD"
 elif [ -f "$MNT/images/vmlinuz" ]; then
     echo "Using images/vmlinuz"
     cp "$MNT/images/vmlinuz" "$VMLINUZ"
-    # find the initrd — name varies
-    for name in ramdisk.img initrd.img boot.img; do
-        if [ -f "$MNT/images/$name" ]; then
-            echo "Found initrd: images/$name"
-            cp "$MNT/images/$name" "$INITRD"
-            break
-        fi
+    for name in initrd.img ramdisk.img; do
+        [ -f "$MNT/images/$name" ] && cp "$MNT/images/$name" "$INITRD" && break
     done
 else
-    echo "Could not find installer kernel. Full images/ listing:"
-    find "$MNT/images/" -type f
+    echo "Could not find installer kernel. Full disc1 listing:"
+    find "$MNT" -maxdepth 3 -type f | sort
     umount "$MNT"
     exit 1
 fi
 
-[ -f "$INITRD" ] || { echo "Could not find initrd. images/ listing:"; find "$MNT/images/" -type f; umount "$MNT"; exit 1; }
+[ -f "$INITRD" ] || { echo "Could not find initrd"; find "$MNT" -maxdepth 3 -type f | sort; umount "$MNT"; exit 1; }
 
 echo "Kernel: $VMLINUZ ($(du -h "$VMLINUZ" | cut -f1))"
 echo "Initrd: $INITRD ($(du -h "$INITRD" | cut -f1))"
