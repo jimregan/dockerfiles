@@ -8,8 +8,9 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-24
+INSTALL_SCRIPT_REV=20260506-25
 KS_ARG=${KS_ARG:-ks=floppy}
+BOOT_COMMAND=${BOOT_COMMAND:-linux ks=floppy}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -301,8 +302,8 @@ if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
 
     cat > "$BOOTMNT/syslinux.cfg" << EOF
 DEFAULT linux
-PROMPT 0
-TIMEOUT 1
+PROMPT 1
+TIMEOUT 600
 LABEL linux
 KERNEL vmlinuz
 APPEND $BASE_APPEND $APPEND_ARGS
@@ -324,6 +325,7 @@ fi
 
 echo "Installer boot mode: $INSTALL_BOOT"
 echo "Installer kickstart arg: $KS_ARG"
+echo "Installer boot prompt command: $BOOT_COMMAND"
 echo "Installer append args: $APPEND_ARGS"
 echo "RHL72-supported kickstart forms: ks=floppy | ks=hd:fd0/ks.cfg | ks=file:/ks.cfg | ks=nfs:<server>:/<path> | ks=cdrom:/<path> | ks"
 echo "Installer memory: ${INSTALL_MEM}M"
@@ -331,6 +333,8 @@ echo "Installer CPU args: $CPU_FLAG"
 
 if [ "$INSTALL_BOOT" = "direct" ]; then
     INSTALL_STATUS="qemu-running"
+    MONITOR=/tmp/qemu-install-monitor.sock
+    rm -f "$MONITOR"
     set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
@@ -342,8 +346,18 @@ if [ "$INSTALL_BOOT" = "direct" ]; then
         -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
         $CPU_FLAG \
         -no-acpi \
+        -monitor unix:"$MONITOR",server,nowait \
         $DISPLAY_ARGS \
-        -no-reboot
+        -no-reboot &
+    QEMU_PID=$!
+    sleep 3
+    if [ -S "$MONITOR" ]; then
+        for key in l i n u x spc k s equal f l o p p y ret; do
+            printf 'sendkey %s\n' "$key" | socat - UNIX-CONNECT:"$MONITOR" >/dev/null 2>&1 || true
+            sleep 0.05
+        done
+    fi
+    wait "$QEMU_PID"
     LAST_QEMU_EXIT=$?
     set -e
 else

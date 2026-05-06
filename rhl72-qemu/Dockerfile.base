@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     nfs-kernel-server \
     rpcbind \
     kmod \
+    socat \
     rsync \
     wget \
     openssh-client \
