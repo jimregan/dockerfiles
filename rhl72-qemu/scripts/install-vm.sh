@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-11
+INSTALL_SCRIPT_REV=20260506-13
 KS_ARG=${KS_ARG:-ks=floppy}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -178,18 +178,21 @@ if [ -f "$MNT1/images/$BOOT_IMAGE" ]; then
     if [ -z "$ORIGINAL_APPEND" ]; then
         ORIGINAL_APPEND="initrd=initrd.img"
     fi
-    BASE_APPEND=$(printf '%s\n' "$ORIGINAL_APPEND" | sed -E 's/(^| )ks=[^ ]+//g; s/(^| )method=[^ ]+//g; s/(^| )ksdevice=[^ ]+//g; s/(^| )ip=[^ ]+//g; s/  +/ /g; s/^ //; s/ $//')
+    RAMDISK_ARG=$(printf '%s\n' "$ORIGINAL_APPEND" | tr ' ' '\n' | grep '^ramdisk_size=' | head -n 1 || true)
+    INITRD_ARG=$(printf '%s\n' "$ORIGINAL_APPEND" | tr ' ' '\n' | grep '^initrd=' | head -n 1 || true)
+    INITRD_ARG=${INITRD_ARG:-initrd=initrd.img}
+    BASE_APPEND="$INITRD_ARG $RAMDISK_ARG"
 
     echo "Original boot floppy append args: $ORIGINAL_APPEND"
     echo "Base boot floppy append args: $BASE_APPEND"
 
     cat > "$BOOTMNT/syslinux.cfg" << EOF
-default linux
-prompt 0
-timeout 1
-label linux
-  kernel vmlinuz
-  append $BASE_APPEND $APPEND_ARGS
+DEFAULT linux
+PROMPT 0
+TIMEOUT 1
+LABEL linux
+KERNEL vmlinuz
+APPEND $APPEND_ARGS $BASE_APPEND
 EOF
     cp /rhl72/kickstart.cfg "$BOOTMNT/ks.cfg"
     echo "Patched boot floppy syslinux.cfg:"
