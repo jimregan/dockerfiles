@@ -8,8 +8,8 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-14
-KS_ARG=${KS_ARG:-ks=floppy}
+INSTALL_SCRIPT_REV=20260506-15
+KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -25,11 +25,17 @@ KS_FLOPPY=""
 BOOT_FLOPPY=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
+RPCBIND_PID=""
+MOUNTD_PID=""
 
 cleanup() {
     local exit_code=$?
     [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
     [ -n "$KS_PID" ] && kill "$KS_PID" 2>/dev/null || true
+    [ -n "$MOUNTD_PID" ] && kill "$MOUNTD_PID" 2>/dev/null || true
+    rpc.nfsd 0 2>/dev/null || true
+    exportfs -ua 2>/dev/null || true
+    [ -n "$RPCBIND_PID" ] && kill "$RPCBIND_PID" 2>/dev/null || true
     [ -n "$KS_FLOPPY" ] && rm -f "$KS_FLOPPY" 2>/dev/null || true
     [ -n "$BOOT_FLOPPY" ] && rm -f "$BOOT_FLOPPY" 2>/dev/null || true
     umount "$MNT1" 2>/dev/null || true
@@ -109,6 +115,21 @@ mkdir -p /tmp/ks
 cp /rhl72/kickstart.cfg /tmp/ks/ks.cfg
 python3 -m http.server 8081 --directory /tmp/ks &
 KS_PID=$!
+
+# RHL 7.2's documented network kickstart path is NFS. QEMU user networking
+# exposes the container as 10.0.2.2 to the guest.
+mkdir -p /export/ks
+cp /rhl72/kickstart.cfg /export/ks/ks.cfg
+printf '%s\n' '/export/ks *(ro,sync,insecure,no_subtree_check,no_root_squash)' > /etc/exports
+mkdir -p /run/rpcbind /proc/fs/nfsd
+mount -t nfsd nfsd /proc/fs/nfsd 2>/dev/null || true
+rpcbind -w &
+RPCBIND_PID=$!
+sleep 1
+exportfs -ra
+rpc.nfsd 8
+rpc.mountd -F &
+MOUNTD_PID=$!
 
 # Put kickstart on a virtual floppy. RHL 7.2 Anaconda is much more reliable
 # with ks=floppy than with fetching ks.cfg over early installer networking.
