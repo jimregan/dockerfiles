@@ -8,8 +8,8 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-23
-KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
+INSTALL_SCRIPT_REV=20260506-24
+KS_ARG=${KS_ARG:-ks=floppy}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 
@@ -239,11 +239,11 @@ qemu-img create -f qcow2 "$DISK" 8G
 CPU_FLAG=$(qemu_install_cpu_args)
 INSTALL_MEM=${INSTALL_MEM:-256}
 DISPLAY_ARGS="-display none -serial stdio"
-APPEND_ARGS="text $KS_ARG method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage console=ttyS0,9600n8"
+APPEND_ARGS="$KS_ARG"
 NOVNC_PID=""
 if [ "${INSTALL_VNC:-0}" != "0" ]; then
     DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
-    APPEND_ARGS="text $KS_ARG method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp noapic nousb nousbstorage"
+    APPEND_ARGS="$KS_ARG"
     websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
     NOVNC_PID=$!
     echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
@@ -305,7 +305,7 @@ PROMPT 0
 TIMEOUT 1
 LABEL linux
 KERNEL vmlinuz
-APPEND $APPEND_ARGS $BASE_APPEND
+APPEND $BASE_APPEND $APPEND_ARGS
 EOF
     cp /rhl72/kickstart.cfg "$BOOTMNT/ks.cfg"
     echo "Patched boot floppy syslinux.cfg:"

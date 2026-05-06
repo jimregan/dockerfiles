@@ -9,7 +9,7 @@ INSTALL_BOOT=${INSTALL_BOOT:-direct}
 BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
-KS_ARG=${KS_ARG:-ks=nfs:10.0.2.2:/export/ks/ks.cfg}
+KS_ARG=${KS_ARG:-ks=floppy}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
