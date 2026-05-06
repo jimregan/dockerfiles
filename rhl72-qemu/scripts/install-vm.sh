@@ -94,9 +94,10 @@ qemu-system-i386 \
     $CPU_FLAG \
     -kernel "$VMLINUZ" \
     -initrd "$INITRD" \
-    -append "text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=ttyS0,9600n8" \
-    -nographic \
-    -serial mon:stdio
+    -append "text ks=http://10.0.2.2:8081/ks.cfg method=http://10.0.2.2:8080 ksdevice=eth0 ip=dhcp console=tty0 console=ttyS0,9600n8" \
+    -display none \
+    -serial stdio \
+    -no-reboot
 
 require_bootable_disk "$DISK"
 echo "Install complete: $DISK"
