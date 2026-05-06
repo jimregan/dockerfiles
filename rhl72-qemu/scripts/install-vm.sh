@@ -49,8 +49,21 @@ cp /rhl72/kickstart.cfg "$TREE/ks.cfg"
 mount -o loop,ro "$DISC1" "$MNT"
 VMLINUZ="$TREE/vmlinuz"
 INITRD="$TREE/initrd.img"
-cp "$MNT/images/pxeboot/vmlinuz"    "$VMLINUZ"
-cp "$MNT/images/pxeboot/initrd.img" "$INITRD"
+
+# RHL 7.2 (2001) uses images/ directly; pxeboot/ subdir came later
+if [ -f "$MNT/images/pxeboot/vmlinuz" ]; then
+    cp "$MNT/images/pxeboot/vmlinuz"    "$VMLINUZ"
+    cp "$MNT/images/pxeboot/initrd.img" "$INITRD"
+elif [ -f "$MNT/images/vmlinuz" ]; then
+    cp "$MNT/images/vmlinuz"   "$VMLINUZ"
+    cp "$MNT/images/ramdisk.img" "$INITRD"
+else
+    echo "Could not find installer kernel on disc1. Contents of images/:"
+    ls "$MNT/images/"
+    umount "$MNT"
+    exit 1
+fi
+
 umount "$MNT"
 
 # --- Serve the tree over HTTP (reachable from QEMU guest as 10.0.2.2:8080) ---
