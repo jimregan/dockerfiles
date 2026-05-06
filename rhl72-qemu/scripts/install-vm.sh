@@ -67,13 +67,12 @@ KVM_FLAG=""
 qemu-system-i386 \
     -m 256 \
     -hda "$DISK" \
-    -boot n \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
     $KVM_FLAG \
     -kernel "$VMLINUZ" \
     -initrd "$INITRD" \
-    -append "ks=http://10.0.2.2:8080/ks.cfg method=http://10.0.2.2:8080" \
+    -append "ks=http://10.0.2.2:8080/ks.cfg method=http://10.0.2.2:8080 console=ttyS0" \
     -nographic \
     -serial mon:stdio
 

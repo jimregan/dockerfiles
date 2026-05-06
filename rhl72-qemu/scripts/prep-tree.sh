@@ -1,12 +1,11 @@
 #!/bin/bash
-# Combine all three RHL 7.2 ISOs into a single install tree served over HTTP.
-# Usage: prep-tree.sh disc1.iso disc2.iso disc3.iso [output-dir]
+# Combine the two RHL 7.2 ISOs into a single install tree served over HTTP.
+# Usage: prep-tree.sh disc1.iso disc2.iso [output-dir]
 set -euo pipefail
 
-DISC1=${1:?Usage: prep-tree.sh disc1.iso disc2.iso disc3.iso}
+DISC1=${1:?Usage: prep-tree.sh disc1.iso disc2.iso}
 DISC2=${2:?}
-DISC3=${3:?}
-OUTDIR=${4:-/rhl72/tree}
+OUTDIR=${3:-/rhl72/tree}
 
 MNT=$(mktemp -d)
 cleanup() { umount "$MNT" 2>/dev/null || true; rmdir "$MNT"; }
@@ -14,7 +13,7 @@ trap cleanup EXIT
 
 mkdir -p "$OUTDIR/RedHat/RPMS" "$OUTDIR/RedHat/base"
 
-for ISO in "$DISC1" "$DISC2" "$DISC3"; do
+for ISO in "$DISC1" "$DISC2"; do
     echo "Extracting $ISO ..."
     mount -o loop,ro "$ISO" "$MNT"
 
