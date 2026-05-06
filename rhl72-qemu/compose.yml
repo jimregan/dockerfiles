@@ -1,28 +1,21 @@
 services:
 
   interactive:
-    image: rhl72-installed
+    build:
+      context: .
+      dockerfile: Dockerfile.interactive
+    image: rhl72-interactive
     privileged: true
     devices:
       - /dev/kvm:/dev/kvm
     ports:
       - "6080:6080"
       - "2222:2222"
-    command: bash /rhl72/scripts/run-interactive.sh
-
-  build:
-    image: rhl72-installed
-    privileged: true
-    devices:
-      - /dev/kvm:/dev/kvm
-    volumes:
-      - ./rpmbuild:/rpmbuild:ro
-      - ./output:/output
-    command: bash /rhl72/scripts/run-build.sh
-    profiles:
-      - build
 
   final:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
     image: rhl72-final
     privileged: true
     devices:
