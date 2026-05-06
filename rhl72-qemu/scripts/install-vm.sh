@@ -8,7 +8,7 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 INSTALL_BOOT=${INSTALL_BOOT:-direct}
-INSTALL_SCRIPT_REV=20260506-13
+INSTALL_SCRIPT_REV=20260506-14
 KS_ARG=${KS_ARG:-ks=floppy}
 
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
@@ -212,6 +212,7 @@ fi
 echo "Installer boot mode: $INSTALL_BOOT"
 echo "Installer kickstart arg: $KS_ARG"
 echo "Installer append args: $APPEND_ARGS"
+echo "RHL72-supported kickstart forms: ks=floppy | ks=hd:fd0/ks.cfg | ks=file:/ks.cfg | ks=nfs:<server>:/<path> | ks=cdrom:/<path> | ks"
 echo "Installer memory: ${INSTALL_MEM}M"
 echo "Installer CPU args: $CPU_FLAG"
 
