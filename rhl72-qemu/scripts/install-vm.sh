@@ -10,18 +10,20 @@ DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
 BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
+BOOT_MODE=${BOOT_MODE:-image}
 INSTALL_MEM=${INSTALL_MEM:-256}
 WORK=/tmp/rhl72-install
 MNT1="$WORK/disc1"
 MNT2="$WORK/disc2"
 BOOT_FLOPPY="$WORK/boot-ks.img"
+KS_DIR="$WORK/ks-floppy"
 SYSLINUX_CFG="$WORK/SYSLINUX.CFG"
 HTTP_PID=""
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-7
+INSTALL_SCRIPT_REV=20260506-mcopy-8
 
 fail() {
     INSTALL_ERROR=$1
@@ -47,6 +49,7 @@ cleanup() {
         echo "error=${INSTALL_ERROR:-unset}"
         echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
         echo "boot_image=$BOOT_IMAGE"
+        echo "boot_mode=$BOOT_MODE"
         echo "install_mem=$INSTALL_MEM"
         echo "cpu_args=${CPU_FLAG:-unset}"
         echo "disk=$DISK"
@@ -113,6 +116,7 @@ make_boot_floppy() {
 
     cp "$source" "$BOOT_FLOPPY"
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
+    mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg || true
     mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
     sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default ks/' "$SYSLINUX_CFG"
     sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Kk][Ss][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
@@ -125,6 +129,15 @@ make_boot_floppy() {
     mtype -i "$BOOT_FLOPPY" ::syslinux.cfg
     echo "Boot floppy root:"
     mdir -i "$BOOT_FLOPPY" ::
+}
+
+make_fat_kickstart_dir() {
+    INSTALL_STATUS="creating-fat-kickstart-dir"
+    mkdir -p "$KS_DIR"
+    cp /rhl72/kickstart.cfg "$KS_DIR/ks.cfg"
+    cp /rhl72/kickstart.cfg "$KS_DIR/KS.CFG"
+    echo "QEMU FAT kickstart floppy directory:"
+    find "$KS_DIR" -maxdepth 1 -type f -printf '%f\n' | sort
 }
 
 start_display_proxy() {
@@ -140,18 +153,30 @@ start_display_proxy() {
 
 run_installer() {
     CPU_FLAG=$(qemu_install_cpu_args)
+    local floppy_drives=()
 
     echo "Installer memory: ${INSTALL_MEM}M"
     echo "Installer CPU args: $CPU_FLAG"
 
     qemu-img create -f qcow2 "$DISK" 8G
 
+    if [ "$BOOT_MODE" = "fatfloppy" ]; then
+        floppy_drives=(
+            -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0
+            -drive file=fat:floppy:"$KS_DIR",if=floppy,index=1
+        )
+    else
+        floppy_drives=(
+            -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0
+        )
+    fi
+
     INSTALL_STATUS="qemu-running"
     set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
-        -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
+        "${floppy_drives[@]}" \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
@@ -181,6 +206,9 @@ prepare_workspace
 mount_isos
 start_install_tree_http
 make_boot_floppy
+if [ "$BOOT_MODE" = "fatfloppy" ]; then
+    make_fat_kickstart_dir
+fi
 start_display_proxy
 run_installer
 validate_install
