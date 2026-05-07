@@ -15,11 +15,7 @@ Put the Red Hat Linux 7.2 install ISOs on the host and point `ISO_DIR` at them. 
 - `disc1.iso`
 - `disc2.iso`
 
-Prepare a merged install tree before running the installer:
-
-```bash
-sudo ./scripts/prep-tree.sh ./isos/disc1.iso ./isos/disc2.iso ./tree
-```
+`./build.sh` creates a merged install tree at `./tree` by running `scripts/prep-tree.sh` inside the Docker image. The prep container is privileged because it loop-mounts the ISOs.
 
 The old Tcl plugin RPM inputs should use the normal rpmbuild layout under `./rpmbuild`:
 
@@ -39,7 +35,7 @@ To remove stale containers/images from earlier attempts:
 ./clean.sh
 ```
 
-This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
+This prepares the merged install tree if needed, performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
 
 ```bash
 ISO_DIR=/path/to/rhl72-isos ./build.sh

@@ -10,18 +10,42 @@ INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-$(pwd)/tree}
 
-if [ ! -d "$TREE_DIR/RedHat" ]; then
-    echo "Missing install tree: $TREE_DIR/RedHat"
-    echo "Create it with: sudo ./scripts/prep-tree.sh \"$ISO_DIR/disc1.iso\" \"$ISO_DIR/disc2.iso\" \"$TREE_DIR\""
-    exit 1
-fi
+case "$ISO_DIR" in
+    /*) ISO_DIR_ABS=$ISO_DIR ;;
+    *) ISO_DIR_ABS="$(pwd)/$ISO_DIR" ;;
+esac
+
+case "$TREE_DIR" in
+    /*) TREE_DIR_ABS=$TREE_DIR ;;
+    *) TREE_DIR_ABS="$(pwd)/$TREE_DIR" ;;
+esac
+
+TREE_PARENT=$(dirname "$TREE_DIR_ABS")
+TREE_BASE=$(basename "$TREE_DIR_ABS")
+
+[ -f "$ISO_DIR_ABS/disc1.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc1.iso"; exit 1; }
+[ -f "$ISO_DIR_ABS/disc2.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc2.iso"; exit 1; }
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
 # Step 1: base image with QEMU and scripts
 docker build -f Dockerfile.base -t rhl72-base .
 
-# Step 2: run the RHL 7.2 installer, commit disk into rhl72-installed
+# Step 2: build the merged install tree if it is not already present
+if [ ! -d "$TREE_DIR_ABS/RedHat" ]; then
+    echo "Preparing merged RHL 7.2 install tree in Docker..."
+    mkdir -p "$TREE_PARENT"
+    docker run --rm --privileged \
+        -v "$ISO_DIR_ABS":/rhl72/isos:ro \
+        -v "$TREE_PARENT":/rhl72/tree-parent \
+        rhl72-base \
+        bash /rhl72/scripts/prep-tree.sh \
+            /rhl72/isos/disc1.iso \
+            /rhl72/isos/disc2.iso \
+            "/rhl72/tree-parent/$TREE_BASE"
+fi
+
+# Step 3: run the RHL 7.2 installer, commit disk into rhl72-installed
 echo "Running RHL 7.2 installer (no KVM = slow)..."
 KVM=""
 [ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
@@ -29,8 +53,8 @@ PORTS=""
 [ "$INSTALL_VNC" != "0" ] && PORTS="-p 6080:6080"
 
 CID=$(docker run -d --privileged $KVM $PORTS \
-    -v "$ISO_DIR":/rhl72/isos:ro \
-    -v "$TREE_DIR":/rhl72/tree:ro \
+    -v "$ISO_DIR_ABS":/rhl72/isos:ro \
+    -v "$TREE_DIR_ABS":/rhl72/tree:ro \
     -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
@@ -55,7 +79,7 @@ fi
 docker commit "$CID" rhl72-installed
 docker rm "$CID"
 
-# Step 3: images used after the guest OS is installed
+# Step 4: images used after the guest OS is installed
 docker build -f Dockerfile.interactive -t rhl72-interactive .
 docker build -f Dockerfile.builder -t rhl72-builder .
 
