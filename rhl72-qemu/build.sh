@@ -8,7 +8,7 @@ INSTALL_VNC=${INSTALL_VNC:-0}
 BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 BOOT_MODE=${BOOT_MODE:-image}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
-INSTALL_MEM=${INSTALL_MEM:-512}
+INSTALL_MEM=${INSTALL_MEM:-128}
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
