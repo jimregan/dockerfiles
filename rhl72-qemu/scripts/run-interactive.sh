@@ -19,7 +19,7 @@ echo "noVNC available at: http://localhost:6080/vnc.html"
 
 # VNC only on loopback — noVNC/websockify is the external interface
 qemu-system-i386 \
-    -m 256 \
+    -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \
