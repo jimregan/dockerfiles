@@ -23,7 +23,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-8
+INSTALL_SCRIPT_REV=20260506-mcopy-9
 
 fail() {
     INSTALL_ERROR=$1
@@ -154,6 +154,7 @@ start_display_proxy() {
 run_installer() {
     CPU_FLAG=$(qemu_install_cpu_args)
     local floppy_drives=()
+    local qemu_log="$WORK/qemu.log"
 
     echo "Installer memory: ${INSTALL_MEM}M"
     echo "Installer CPU args: $CPU_FLAG"
@@ -163,7 +164,7 @@ run_installer() {
     if [ "$BOOT_MODE" = "fatfloppy" ]; then
         floppy_drives=(
             -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0
-            -drive file=fat:floppy:"$KS_DIR",if=floppy,index=1
+            -fdb fat:floppy:"$KS_DIR"
         )
     else
         floppy_drives=(
@@ -183,12 +184,14 @@ run_installer() {
         $CPU_FLAG \
         -no-acpi \
         $DISPLAY_ARGS \
-        -no-reboot
+        -no-reboot >"$qemu_log" 2>&1
     LAST_QEMU_EXIT=$?
     set -e
 
     if [ "$LAST_QEMU_EXIT" != "0" ]; then
         INSTALL_STATUS="qemu-exited-nonzero"
+        echo "QEMU output:"
+        cat "$qemu_log" 2>/dev/null || true
         fail "qemu exited with $LAST_QEMU_EXIT"
     fi
 }
