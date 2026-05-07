@@ -112,7 +112,7 @@ make_boot_floppy() {
     }
 
     cp "$source" "$BOOT_FLOPPY"
-    mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg
+    mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
     mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
     sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default ks/' "$SYSLINUX_CFG"
     sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Kk][Ss][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
