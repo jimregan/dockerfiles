@@ -9,7 +9,7 @@ set -euo pipefail
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
-BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
+BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 BOOT_MODE=${BOOT_MODE:-image}
 INSTALL_MEM=${INSTALL_MEM:-256}
 WORK=/tmp/rhl72-install
@@ -23,7 +23,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-11
+INSTALL_SCRIPT_REV=20260507-mcopy-1
 
 fail() {
     INSTALL_ERROR=$1
@@ -118,11 +118,13 @@ make_boot_floppy() {
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg || true
     mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
-    sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default ks/' "$SYSLINUX_CFG"
+    sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default linux/' "$SYSLINUX_CFG"
     sed -i 's/^[Pp][Rr][Oo][Mm][Pp][Tt][[:space:]].*/prompt 0/' "$SYSLINUX_CFG"
-    sed -i 's/^[Tt][Ii][Mm][Ee][Oo][Uu][Tt][[:space:]].*/timeout 1/' "$SYSLINUX_CFG"
-    sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Kk][Ss][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
-        s/^[[:space:]]*[Aa][Pp][Pp][Ee][Nn][Dd][[:space:]]\+ks[[:space:]]/  append ks=floppy /
+    sed -i 's/^[Tt][Ii][Mm][Ee][Oo][Uu][Tt][[:space:]].*/timeout 0/' "$SYSLINUX_CFG"
+    sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Ll][Ii][Nn][Uu][Xx][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
+        /^[[:space:]]*[Aa][Pp][Pp][Ee][Nn][Dd][[:space:]]/ {
+            /[[:space:]]ks=floppy\([[:space:]]\|$\)/! s/$/ ks=floppy/
+        }
     }' "$SYSLINUX_CFG"
     mcopy -o -i "$BOOT_FLOPPY" "$SYSLINUX_CFG" ::SYSLINUX.CFG
 
@@ -156,6 +158,7 @@ start_display_proxy() {
 run_installer() {
     CPU_FLAG=$(qemu_install_cpu_args)
     local floppy_drives=()
+    local cdrom_drive=()
     local qemu_log="$WORK/qemu.log"
 
     echo "Installer memory: ${INSTALL_MEM}M"
@@ -174,11 +177,18 @@ run_installer() {
         )
     fi
 
+    if [ "$BOOT_IMAGE" = "boot.img" ]; then
+        cdrom_drive=(
+            -drive file="$DISC1",format=raw,if=ide,index=2,media=cdrom,readonly=on
+        )
+    fi
+
     INSTALL_STATUS="qemu-running"
     set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
+        "${cdrom_drive[@]}" \
         "${floppy_drives[@]}" \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
