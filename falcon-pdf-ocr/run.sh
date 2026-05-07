@@ -14,7 +14,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 docker build -t "${IMAGE_NAME}" "${SCRIPT_DIR}"
 docker run --rm \
-  --gpus all \
+  --gpus '"device=0"' \
+  -e FALCON_CUDA_DEVICE=0 \
   -v "${DATA_DIR}:/data:ro" \
   -v "${OUTPUT_DIR}:/output" \
   "${IMAGE_NAME}"
