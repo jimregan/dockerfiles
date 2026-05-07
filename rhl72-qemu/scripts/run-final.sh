@@ -21,6 +21,7 @@ qemu-system-i386 \
     -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
     $KVM_FLAG \
     -no-acpi \
+    -vga cirrus \
     -boot order=c \
     -vnc 127.0.0.1:0 &
 
