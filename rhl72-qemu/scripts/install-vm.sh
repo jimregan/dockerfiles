@@ -23,7 +23,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-10
+INSTALL_SCRIPT_REV=20260506-mcopy-11
 
 fail() {
     INSTALL_ERROR=$1
@@ -119,6 +119,8 @@ make_boot_floppy() {
     mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg || true
     mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
     sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default ks/' "$SYSLINUX_CFG"
+    sed -i 's/^[Pp][Rr][Oo][Mm][Pp][Tt][[:space:]].*/prompt 0/' "$SYSLINUX_CFG"
+    sed -i 's/^[Tt][Ii][Mm][Ee][Oo][Uu][Tt][[:space:]].*/timeout 1/' "$SYSLINUX_CFG"
     sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Kk][Ss][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
         s/^[[:space:]]*[Aa][Pp][Pp][Ee][Nn][Dd][[:space:]]\+ks[[:space:]]/  append ks=floppy /
     }' "$SYSLINUX_CFG"
