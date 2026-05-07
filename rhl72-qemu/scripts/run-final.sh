@@ -15,7 +15,7 @@ echo "noVNC available at: http://localhost:6080/vnc.html"
 echo "SSH forwarded to port 2222."
 
 qemu-system-i386 \
-    -m 512 \
+    -m 256 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
     -device ne2k_pci,netdev=net0 \

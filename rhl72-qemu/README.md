@@ -15,6 +15,12 @@ Put the Red Hat Linux 7.2 install ISOs on the host and point `ISO_DIR` at them. 
 - `disc1.iso`
 - `disc2.iso`
 
+Prepare a merged install tree before running the installer:
+
+```bash
+sudo ./scripts/prep-tree.sh ./isos/disc1.iso ./isos/disc2.iso ./tree
+```
+
 The old Tcl plugin RPM inputs should use the normal rpmbuild layout under `./rpmbuild`:
 
 ```text
@@ -33,7 +39,7 @@ To remove stale containers/images from earlier attempts:
 ./clean.sh
 ```
 
-This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images.
+This performs the RHL 7.2 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
 
 ```bash
 ISO_DIR=/path/to/rhl72-isos ./build.sh
@@ -51,19 +57,13 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `KS.CFG`/`ks.cfg` with `mcopy`, sets `SYSLINUX.CFG` to boot the normal `linux` label without a prompt, and appends `ks=floppy` to that label. It also attaches disc 1 as a CD-ROM when booting `boot.img`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
+The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `KS.CFG`/`ks.cfg` with `mcopy`, sets `SYSLINUX.CFG` to boot the normal `linux` label without a prompt, and appends `ks=floppy` to that label. It attaches the merged install tree as QEMU vvfat disk `hdb` and uses kickstart `harddrive --partition hdb --dir /`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
 
 ```bash
 BOOT_IMAGE=bootnet.img INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
 RHL 7.2 kickstart location syntax is older than later RHEL syntax. The current installer path puts `KS.CFG` on the boot floppy for the documented `linux ks=floppy` path.
-
-For debugging, `BOOT_MODE=fatfloppy` also exposes `kickstart.cfg` through QEMU's virtual FAT floppy support as fd1:
-
-```bash
-BOOT_MODE=fatfloppy INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
-```
 
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 

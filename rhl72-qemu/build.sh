@@ -6,9 +6,15 @@ ROOT_PASSWORD=${ROOT_PASSWORD:-rootpassword}
 INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
 INSTALL_VNC=${INSTALL_VNC:-0}
 BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
-BOOT_MODE=${BOOT_MODE:-image}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
-INSTALL_MEM=${INSTALL_MEM:-128}
+INSTALL_MEM=${INSTALL_MEM:-256}
+TREE_DIR=${TREE_DIR:-$(pwd)/tree}
+
+if [ ! -d "$TREE_DIR/RedHat" ]; then
+    echo "Missing install tree: $TREE_DIR/RedHat"
+    echo "Create it with: sudo ./scripts/prep-tree.sh \"$ISO_DIR/disc1.iso\" \"$ISO_DIR/disc2.iso\" \"$TREE_DIR\""
+    exit 1
+fi
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -24,14 +30,15 @@ PORTS=""
 
 CID=$(docker run -d --privileged $KVM $PORTS \
     -v "$ISO_DIR":/rhl72/isos:ro \
+    -v "$TREE_DIR":/rhl72/tree:ro \
     -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
     -e INSTALL_VNC="$INSTALL_VNC" \
     -e BOOT_IMAGE="$BOOT_IMAGE" \
-    -e BOOT_MODE="$BOOT_MODE" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
+    -e TREE_DIR=/rhl72/tree \
     rhl72-base \
     bash /rhl72/scripts/install-vm.sh)
 

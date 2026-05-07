@@ -6,14 +6,9 @@ RUN apt-get update && apt-get install -y \
     qemu-system-i386 \
     qemu-utils \
     qemu-system-common \
-    python3 \
-    dosfstools \
     mtools \
-    rsync \
-    wget \
     openssh-client \
     sshpass \
-    expect \
     novnc \
     websockify \
     && rm -rf /var/lib/apt/lists/*
