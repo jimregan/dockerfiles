@@ -9,7 +9,7 @@ set -euo pipefail
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISC2=${DISC2:-/rhl72/isos/disc2.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
-BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
+BOOT_IMAGE=${BOOT_IMAGE:-bootnet.img}
 INSTALL_MEM=${INSTALL_MEM:-256}
 WORK=/tmp/rhl72-install
 MNT1="$WORK/disc1"
@@ -21,7 +21,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-6
+INSTALL_SCRIPT_REV=20260506-mcopy-7
 
 fail() {
     INSTALL_ERROR=$1
