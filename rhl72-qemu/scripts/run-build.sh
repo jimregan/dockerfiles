@@ -22,8 +22,9 @@ qemu-system-i386 \
     -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device ne2k_pci,netdev=net0 \
+    -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
     $KVM_FLAG \
+    -no-acpi \
     -boot order=c \
     -nographic \
     -serial null \
