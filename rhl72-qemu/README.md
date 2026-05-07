@@ -53,7 +53,7 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh
 ```
 
-The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `KS.CFG`/`ks.cfg` with `mcopy`, sets `SYSLINUX.CFG` to boot the normal `linux` label without a prompt, and appends `ks=floppy` to that label. It attaches the merged install tree as QEMU vvfat disk `hdb` and uses kickstart `harddrive --partition hdb --dir /`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
+The installer creates a copy of disc 1's `images/boot.img`, adds `kickstart.cfg` as `KS.CFG`/`ks.cfg` with `mcopy`, sets `SYSLINUX.CFG` to boot the normal `linux` label without a prompt, and appends `ks=floppy` to that label. It copies the merged install tree into a temporary FAT32 disk image, attaches it as IDE disk `hdb`, and uses kickstart `harddrive --partition hdb --dir /`. To try a different floppy image from `images/`, set `BOOT_IMAGE`, for example:
 
 ```bash
 BOOT_IMAGE=bootnet.img INSTALL_VNC=1 ISO_DIR=/path/to/rhl72-isos ./build.sh

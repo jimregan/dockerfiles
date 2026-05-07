@@ -11,15 +11,17 @@ DISK=${DISK:-/disk/rhl72.qcow2}
 BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-/rhl72/tree}
+TREE_IMAGE_MB=${TREE_IMAGE_MB:-0}
 WORK=/tmp/rhl72-install
 MNT1="$WORK/disc1"
 BOOT_FLOPPY="$WORK/boot-ks.img"
+TREE_IMAGE="$WORK/install-tree.img"
 SYSLINUX_CFG="$WORK/SYSLINUX.CFG"
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260507-vvfat-1
+INSTALL_SCRIPT_REV=20260507-fatdisk-1
 
 fail() {
     INSTALL_ERROR=$1
@@ -44,6 +46,7 @@ cleanup() {
         echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
         echo "boot_image=$BOOT_IMAGE"
         echo "install_tree=$TREE_DIR"
+        echo "install_tree_image=$TREE_IMAGE"
         echo "install_mem=$INSTALL_MEM"
         echo "cpu_args=${CPU_FLAG:-unset}"
         echo "disk=$DISK"
@@ -102,6 +105,33 @@ make_boot_floppy() {
     mdir -i "$BOOT_FLOPPY" ::
 }
 
+make_install_tree_disk() {
+    local tree_mb
+    local image_mb
+
+    INSTALL_STATUS="creating-install-tree-disk"
+
+    tree_mb=$(du -sm "$TREE_DIR" | awk '{print $1}')
+    if [ "$TREE_IMAGE_MB" -gt 0 ]; then
+        image_mb=$TREE_IMAGE_MB
+    else
+        image_mb=$((tree_mb + 256))
+    fi
+
+    if [ "$image_mb" -lt 1024 ]; then
+        image_mb=1024
+    fi
+
+    echo "Install tree size: ${tree_mb}M"
+    echo "Install tree FAT disk: ${image_mb}M"
+
+    qemu-img create -f raw "$TREE_IMAGE" "${image_mb}M"
+    mkfs.vfat -F 32 -n RHL72TREE "$TREE_IMAGE"
+    mcopy -s -i "$TREE_IMAGE" "$TREE_DIR"/* ::
+    echo "Install tree FAT disk root:"
+    mdir -i "$TREE_IMAGE" ::
+}
+
 start_display_proxy() {
     DISPLAY_ARGS="-display none -serial stdio"
 
@@ -127,7 +157,7 @@ run_installer() {
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
-        -hdb "fat:readonly:$TREE_DIR" \
+        -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk,readonly=on \
         -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
@@ -159,6 +189,7 @@ require_inputs
 prepare_workspace
 mount_boot_iso
 make_boot_floppy
+make_install_tree_disk
 start_display_proxy
 run_installer
 validate_install

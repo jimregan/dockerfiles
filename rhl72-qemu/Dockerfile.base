@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     qemu-system-i386 \
     qemu-utils \
     qemu-system-common \
+    dosfstools \
     mtools \
     rsync \
     openssh-client \
