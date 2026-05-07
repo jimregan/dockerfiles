@@ -21,7 +21,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260507-fatdisk-1
+INSTALL_SCRIPT_REV=20260507-fatdisk-2
 
 fail() {
     INSTALL_ERROR=$1
@@ -157,7 +157,7 @@ run_installer() {
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
-        -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk,readonly=on \
+        -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
         -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
         -boot a \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
