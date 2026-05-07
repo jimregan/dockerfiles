@@ -23,7 +23,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260506-mcopy-9
+INSTALL_SCRIPT_REV=20260506-mcopy-10
 
 fail() {
     INSTALL_ERROR=$1
@@ -164,7 +164,7 @@ run_installer() {
     if [ "$BOOT_MODE" = "fatfloppy" ]; then
         floppy_drives=(
             -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0
-            -fdb fat:floppy:"$KS_DIR"
+            -fdb fat:floppy:rw:"$KS_DIR"
         )
     else
         floppy_drives=(
