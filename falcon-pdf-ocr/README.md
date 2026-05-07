@@ -34,6 +34,8 @@ the output will be written to:
 
 Each page JSON contains the page size plus layout blocks with category, bounding box, score, and text. Markdown is assembled from those layout blocks in reading order, with light formatting for headings and list items.
 
+If layout OCR fails on a batch, the runner retries with smaller work units until it reaches single pages and smaller OCR crop batches. If layout still fails for a page, that page is marked failed; there is no plain-OCR fallback. Documents can therefore finish with `completed`, `partial`, or `failed` status in `manifest.json`, and reruns with `SKIP_EXISTING=true` only skip documents already marked `completed`.
+
 ## Build and run
 
 ```bash

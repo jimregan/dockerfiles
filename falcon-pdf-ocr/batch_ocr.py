@@ -26,6 +26,13 @@ class RenderedPage:
     height: int
 
 
+@dataclass
+class PageFailure:
+    page_number: int
+    stage: str
+    error: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run Falcon OCR with layout on PDFs under /data and write page outputs to /output."
@@ -37,13 +44,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--page-batch-size",
         type=int,
-        default=int(os.environ.get("PAGE_BATCH_SIZE", "2")),
+        default=int(os.environ.get("PAGE_BATCH_SIZE", "1")),
         help="How many rendered PDF pages to send to generate_with_layout() at once.",
     )
     parser.add_argument(
         "--ocr-batch-size",
         type=int,
-        default=int(os.environ.get("OCR_BATCH_SIZE", "32")),
+        default=int(os.environ.get("OCR_BATCH_SIZE", "8")),
         help="Forwarded to Falcon OCR's generate_with_layout() for crop batching.",
     )
     parser.add_argument(
@@ -169,6 +176,21 @@ def markdown_from_detections(detections: list[dict]) -> str:
     return "\n\n".join(blocks).strip() + "\n"
 
 
+def serialize_detections(detections: list[dict]) -> list[dict]:
+    serializable_detections = []
+    for index, detection in enumerate(detections):
+        serializable_detections.append(
+            {
+                "index": index,
+                "category": detection.get("category"),
+                "bbox": [int(value) for value in detection.get("bbox", [])],
+                "score": float(detection.get("score", 0.0)),
+                "text": detection.get("text", ""),
+            }
+        )
+    return serializable_detections
+
+
 def write_page_outputs(
     output_dir: Path,
     page_number: int,
@@ -194,6 +216,98 @@ def write_page_outputs(
     markdown_path.write_text(markdown_from_detections(detections), encoding="utf-8")
 
 
+def write_page_error(output_dir: Path, page_number: int, stage: str, error: str) -> None:
+    error_path = output_dir / f"page-{page_number:04d}.error.json"
+    payload = {
+        "page": page_number,
+        "stage": stage,
+        "error": error,
+        "status": "failed",
+    }
+    error_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def maybe_clear_cuda_cache() -> None:
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def is_cuda_oom_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return (
+        "out of memory" in message
+        or "cuda oom" in message
+        or "cuda out of memory" in message
+        or isinstance(exc, torch.cuda.OutOfMemoryError)
+    )
+
+
+def manifest_is_completed(manifest_path: Path) -> bool:
+    if not manifest_path.exists():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return False
+    return manifest.get("status") == "completed"
+
+
+def infer_layout_batch(model, pages: list[RenderedPage], ocr_batch_size: int) -> list[list[dict]]:
+    images = [page.image for page in pages]
+    return model.generate_with_layout(images, ocr_batch_size=ocr_batch_size)
+
+
+def infer_layout_batch_resilient(
+    model, pages: list[RenderedPage], ocr_batch_size: int
+) -> tuple[list[list[dict]], list[PageFailure]]:
+    try:
+        return infer_layout_batch(model, pages, ocr_batch_size=ocr_batch_size), []
+    except Exception as exc:  # noqa: BLE001
+        maybe_clear_cuda_cache()
+
+        if not is_cuda_oom_error(exc):
+            raise
+
+        page_numbers = [page.page_number for page in pages]
+        print(
+            f"CUDA OOM during layout inference for pages {page_numbers} "
+            f"with ocr_batch_size={ocr_batch_size}; retrying with smaller work units."
+        )
+
+        if len(pages) > 1:
+            midpoint = len(pages) // 2
+            left_results, left_failures = infer_layout_batch_resilient(
+                model, pages[:midpoint], ocr_batch_size=ocr_batch_size
+            )
+            right_results, right_failures = infer_layout_batch_resilient(
+                model, pages[midpoint:], ocr_batch_size=ocr_batch_size
+            )
+            return left_results + right_results, left_failures + right_failures
+
+        if ocr_batch_size > 1:
+            smaller_ocr_batch_size = max(1, ocr_batch_size // 2)
+            return infer_layout_batch_resilient(
+                model, pages, ocr_batch_size=smaller_ocr_batch_size
+            )
+
+        return [], [
+            PageFailure(
+                page_number=pages[0].page_number,
+                stage="layout_oom",
+                error=str(exc),
+            )
+        ]
+
+
+def infer_page_layout_only(model, page: RenderedPage, ocr_batch_size: int) -> list[dict]:
+    results, failures = infer_layout_batch_resilient(
+        model, [page], ocr_batch_size=ocr_batch_size
+    )
+    if failures:
+        raise RuntimeError(failures[0].error)
+    return serialize_detections(results[0])
+
+
 def process_pdf(
     model,
     pdf_path: Path,
@@ -216,50 +330,93 @@ def process_pdf(
             "status": "empty",
         }
 
-    for chunk in batched(rendered_pages, page_batch_size):
-        images = [page.image for page in chunk]
-        results = model.generate_with_layout(images, ocr_batch_size=ocr_batch_size)
+    succeeded_pages = 0
+    page_failures: list[PageFailure] = []
 
-        for page, detections in zip(chunk, results):
-            serializable_detections = []
-            for index, detection in enumerate(detections):
-                serializable_detections.append(
-                    {
-                        "index": index,
-                        "category": detection.get("category"),
-                        "bbox": [int(value) for value in detection.get("bbox", [])],
-                        "score": float(detection.get("score", 0.0)),
-                        "text": detection.get("text", ""),
-                    }
+    for chunk in batched(rendered_pages, page_batch_size):
+        try:
+            results, chunk_failures = infer_layout_batch_resilient(
+                model, chunk, ocr_batch_size=ocr_batch_size
+            )
+            failed_page_numbers = {failure.page_number for failure in chunk_failures}
+            result_iter = iter(results)
+
+            for page in chunk:
+                if page.page_number in failed_page_numbers:
+                    raise RuntimeError(
+                        f"Layout inference could not fit page {page.page_number} in memory"
+                    )
+
+                detections = next(result_iter)
+                serializable_detections = serialize_detections(detections)
+                if not serializable_detections:
+                    raise RuntimeError(
+                        f"Layout inference returned no blocks for page {page.page_number}"
+                    )
+                write_page_outputs(
+                    output_dir=pdf_output_dir,
+                    page_number=page.page_number,
+                    page_width=page.width,
+                    page_height=page.height,
+                    detections=serializable_detections,
+                )
+                succeeded_pages += 1
+            continue
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"Batch layout failed for {pdf_path.relative_to(input_root)} "
+                f"pages {[page.page_number for page in chunk]}: {exc}"
+            )
+            maybe_clear_cuda_cache()
+
+        for page in chunk:
+            try:
+                serializable_detections = infer_page_layout_only(
+                    model, page, ocr_batch_size=ocr_batch_size
+                )
+                if not serializable_detections:
+                    raise RuntimeError(
+                        f"Layout inference returned no blocks for page {page.page_number}"
+                    )
+                write_page_outputs(
+                    output_dir=pdf_output_dir,
+                    page_number=page.page_number,
+                    page_width=page.width,
+                    page_height=page.height,
+                    detections=serializable_detections,
+                )
+                succeeded_pages += 1
+            except Exception as exc:  # noqa: BLE001
+                maybe_clear_cuda_cache()
+                page_failures.append(
+                    PageFailure(page_number=page.page_number, stage="page_inference", error=str(exc))
+                )
+                write_page_error(
+                    output_dir=pdf_output_dir,
+                    page_number=page.page_number,
+                    stage="page_inference",
+                    error=str(exc),
                 )
 
-            if not serializable_detections:
-                fallback_text = model.generate(page.image, category="plain")[0].strip()
-                serializable_detections = [
-                    {
-                        "index": 0,
-                        "category": "plain",
-                        "bbox": [0, 0, page.width, page.height],
-                        "score": 1.0,
-                        "text": fallback_text,
-                    }
-                ]
-
-            write_page_outputs(
-                output_dir=pdf_output_dir,
-                page_number=page.page_number,
-                page_width=page.width,
-                page_height=page.height,
-                detections=serializable_detections,
-            )
+    status = "completed"
+    if succeeded_pages == 0:
+        status = "failed"
+    elif page_failures:
+        status = "partial"
 
     manifest = {
         "pdf": str(pdf_path.relative_to(input_root)),
         "output_dir": str(pdf_output_dir.relative_to(output_root)),
         "pages": len(rendered_pages),
+        "succeeded_pages": succeeded_pages,
+        "failed_pages": len(page_failures),
+        "page_failures": [
+            {"page": failure.page_number, "stage": failure.stage, "error": failure.error}
+            for failure in page_failures
+        ],
         "dpi": dpi,
         "model_id": getattr(model, "name_or_path", DEFAULT_MODEL_ID),
-        "status": "completed",
+        "status": status,
     }
     (pdf_output_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
@@ -287,14 +444,15 @@ def main() -> None:
 
     model = load_model(args.model_id)
 
-    processed = 0
+    completed = 0
+    partial = 0
     skipped = 0
     failed = 0
 
     for pdf_path in tqdm(pdfs, desc="PDFs"):
         pdf_output_dir = output_dir_for_pdf(pdf_path, args.input_root, args.output_root)
         manifest_path = pdf_output_dir / "manifest.json"
-        if args.skip_existing and manifest_path.exists():
+        if args.skip_existing and manifest_is_completed(manifest_path):
             skipped += 1
             continue
 
@@ -309,10 +467,15 @@ def main() -> None:
                 ocr_batch_size=args.ocr_batch_size,
                 max_pages_per_doc=args.max_pages_per_doc,
             )
-            processed += 1
+            if manifest["status"] == "completed":
+                completed += 1
+            elif manifest["status"] == "partial":
+                partial += 1
+            else:
+                failed += 1
             print(
                 f"Processed {manifest['pdf']} -> {manifest['output_dir']} "
-                f"({manifest['pages']} pages)"
+                f"({manifest['succeeded_pages']}/{manifest['pages']} pages, {manifest['status']})"
             )
         except Exception as exc:  # noqa: BLE001
             failed += 1
@@ -330,7 +493,9 @@ def main() -> None:
     summary = {
         "input_root": str(args.input_root),
         "output_root": str(args.output_root),
-        "processed": processed,
+        "completed": completed,
+        "partial": partial,
+        "processed": completed + partial,
         "skipped": skipped,
         "failed": failed,
         "model_id": args.model_id,
