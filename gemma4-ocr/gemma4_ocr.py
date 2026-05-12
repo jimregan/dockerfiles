@@ -15,7 +15,6 @@ from PIL import Image
 from tqdm import tqdm
 
 
-DEFAULT_MODEL_ID = "google/gemma-4-27b-it"
 DEFAULT_OLLAMA_MODEL_ID = "gemma4:26b"
 
 _OCR_PROMPT = (
@@ -183,7 +182,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def _default_model_id(backend: str) -> str:
-    return DEFAULT_OLLAMA_MODEL_ID if backend == "ollama" else DEFAULT_MODEL_ID
+    return DEFAULT_OLLAMA_MODEL_ID
 
 
 def _select_dtype():
