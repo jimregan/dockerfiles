@@ -5,7 +5,7 @@ ENV DATA_DIR=/data
 ENV OUTPUT_DIR=/output
 ENV BACKEND=ollama
 ENV OLLAMA_URL=http://localhost:11434
-ENV GEMMA_MODEL_ID=gemma4:27b
+ENV GEMMA_MODEL_ID=gemma4:26b
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \

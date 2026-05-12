@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 
 DEFAULT_MODEL_ID = "google/gemma-4-27b-it"
-DEFAULT_OLLAMA_MODEL_ID = "gemma4:27b"
+DEFAULT_OLLAMA_MODEL_ID = "gemma4:26b"
 
 _OCR_PROMPT = (
     "Perform OCR on this document image with layout analysis. "
