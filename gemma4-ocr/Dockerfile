@@ -7,7 +7,7 @@ RUN nohup ollama serve > /tmp/ollama.log 2>&1 & \
 FROM ollama/ollama:latest
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip \
+    python3 python3-pip curl \
     libglib2.0-0 libsm6 libxext6 libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
