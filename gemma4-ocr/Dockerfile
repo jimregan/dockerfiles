@@ -2,7 +2,7 @@ FROM ollama/ollama:latest AS builder
 
 RUN nohup ollama serve > /tmp/ollama.log 2>&1 & \
     sleep 10 && \
-    ollama pull gemma4:27b
+    ollama pull gemma4:26b
 
 FROM ollama/ollama:latest
 
@@ -21,7 +21,7 @@ COPY gemma4_ocr.py /app/gemma4_ocr.py
 ENV DATA_DIR=/data
 ENV OUTPUT_DIR=/output
 ENV BACKEND=ollama
-ENV GEMMA_MODEL_ID=gemma4:27b
+ENV GEMMA_MODEL_ID=gemma4:26b
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
