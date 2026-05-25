@@ -172,6 +172,12 @@ def parse_args() -> argparse.Namespace:
         default=int(os.environ.get("MAX_PAGES_PER_DOC", "0")),
         help="Limit pages per document for debugging. 0 means no limit.",
     )
+    parser.add_argument(
+        "--pdf-list",
+        type=Path,
+        default=None,
+        help="File of PDF paths (relative to --input-root), one per line. Overrides directory walk.",
+    )
     return parser.parse_args()
 
 
@@ -429,7 +435,14 @@ def main() -> None:
     model_id = args.model_id or _default_model_id(args.backend)
     backend = load_backend(args.backend, model_id, args.vllm_url, args.ollama_url)
 
-    pdfs = find_pdfs(args.input_root)
+    if args.pdf_list is not None:
+        pdfs = [
+            args.input_root / line.strip()
+            for line in args.pdf_list.read_text().splitlines()
+            if line.strip()
+        ]
+    else:
+        pdfs = find_pdfs(args.input_root)
     if args.max_docs > 0:
         pdfs = pdfs[: args.max_docs]
 
