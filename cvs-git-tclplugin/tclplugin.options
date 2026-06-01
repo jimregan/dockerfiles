@@ -30,8 +30,8 @@ logger.log_level = logger.NORMAL
 ctx.tmpdir = r'/workspace/cvs2git-tmp'
 
 ctx.revision_collector = GitRevisionCollector(
+    os.path.join(ctx.tmpdir, 'git-blob.dat'),
     CVSRevisionReader(cvs_executable=r'cvs'),
-    blob_filename=os.path.join(ctx.tmpdir, 'git-blob.dat'),
     )
 
 ctx.revision_reader = None
