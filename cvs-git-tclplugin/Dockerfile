@@ -7,7 +7,7 @@ COPY tclplugin.options .
 RUN wget https://sourceforge.net/code-snapshots/cvs/t/tc/tclplugin.zip &&\
     unzip tclplugin.zip
 
-RUN mkdir tclplugin-git && cd tclplugin-git && git init .
+RUN mkdir tclplugin-git && cd tclplugin-git && git init /workspace/gittmp
 
 RUN mkdir -p /workspace/cvs2git-tmp && \
     cvs2git --options=/workspace/tclplugin.options && \
