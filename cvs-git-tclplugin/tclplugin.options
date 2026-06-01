@@ -112,8 +112,8 @@ author_transforms = {
     }
 
 ctx.output_option = GitOutputOption(
+    os.path.join(ctx.tmpdir, 'git-dump.dat'),
     GitRevisionMarkWriter(),
-    dump_filename=os.path.join(ctx.tmpdir, 'git-dump.dat'),
     author_transforms=author_transforms,
     )
 
