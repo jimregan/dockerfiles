@@ -16,7 +16,7 @@ def parse_args():
     parser.add_argument("--output", default="/output", help="Output directory.")
     parser.add_argument("--model", default=None, help="Hugging Face model id.")
     parser.add_argument("--device", default=None, choices=["cpu", "cuda"], help="Inference device.")
-    parser.add_argument("--chunk-length-s", type=float, default=30.0, help="Chunk length for long files.")
+    parser.add_argument("--chunk-length-s", type=float, default=10.0, help="Chunk length for long files.")
     parser.add_argument("--stride-length-s", type=float, default=5.0, help="Stride length for chunked inference.")
     return parser.parse_args()
 
@@ -47,6 +47,7 @@ def main():
         device=device,
         chunk_length_s=args.chunk_length_s,
         stride_length_s=args.stride_length_s,
+        return_timestamps="word"
     )
 
     files = audio_files(input_path)
