@@ -53,12 +53,11 @@ def main():
         result = transcriber(str(audio_path))
         text = result["text"].strip()
         stem = audio_path.stem
-        (output_dir / f"{stem}.txt").write_text(text + "\n", encoding="utf-8")
         (output_dir / f"{stem}.json").write_text(
             json.dumps({"audio": str(audio_path), "model": model_id, "text": text}, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Wrote {output_dir / f'{stem}.txt'}")
+        print(f"Wrote {output_dir / f'{stem}.json'}")
 
 
 if __name__ == "__main__":
