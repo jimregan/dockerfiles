@@ -24,7 +24,11 @@ def parse_args():
 def audio_files(path):
     if path.is_file():
         return [path]
-    return sorted(item for item in path.iterdir() if item.is_file() and item.suffix.lower() in AUDIO_EXTENSIONS)
+    return sorted(item for item in path.rglob("*") if item.is_file() and item.suffix.lower() in AUDIO_EXTENSIONS)
+
+
+def output_path_for(audio_path, input_root, output_root):
+    return output_root / audio_path.relative_to(input_root).with_suffix(".json")
 
 
 def main():
@@ -49,15 +53,18 @@ def main():
     if not files:
         raise SystemExit(f"No audio files found in {input_path}")
 
+    input_root = input_path if input_path.is_dir() else input_path.parent
+
     for audio_path in files:
         result = transcriber(str(audio_path))
         text = result["text"].strip()
-        stem = audio_path.stem
-        (output_dir / f"{stem}.json").write_text(
+        output_path = output_path_for(audio_path, input_root, output_dir)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
             json.dumps({"audio": str(audio_path), "model": model_id, "text": text}, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Wrote {output_dir / f'{stem}.json'}")
+        print(f"Wrote {output_path}")
 
 
 if __name__ == "__main__":
