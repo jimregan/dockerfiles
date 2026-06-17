@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+FROM python:3.10-slim
 
 # get_user_data_dir() returns Path(MATCHA_HOME)/"matcha_tts", so MATCHA_HOME is
 # the parent: the app reads checkpoints from /data/matcha_tts.
@@ -11,42 +11,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         espeak-ng \
         libsndfile1 \
         git \
+        curl \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Pull app.py (and the rest of the Space) so we don't have to vendor it here.
 RUN git clone --depth 1 https://huggingface.co/spaces/kth-tmh/Matcha-TTS /app
 
-# torch is already provided by the base image. huggingface_hub<0.26 keeps
-# cached_download available for the old diffusers that matcha-tts pulls in.
+# Same package set the Space's builder installs, but on Python 3.10 where
+# numpy==1.24.3 / cython==0.29.35 (matcha-tts build deps) and matplotlib==3.7.4
+# all have prebuilt wheels, so nothing compiles from source.
 RUN pip install --no-cache-dir -U pip \
  && pip install --no-cache-dir -r requirements.txt \
         "gradio[oauth]==3.44.3" \
         "uvicorn>=0.14.0" \
         "websockets>=10.4" \
         spaces \
-        "huggingface_hub<0.26"
+        "huggingface_hub<0.26" \
+        "torch<2.6"
 
-# Download the checkpoints into the image so there is no runtime download.
-RUN python - <<'PY'
-import os, urllib.request
-
-dest = os.path.join(os.environ["MATCHA_HOME"], "matcha_tts")
-os.makedirs(dest, exist_ok=True)
-
-base = "https://github.com/shivammehta25/Matcha-TTS-checkpoints/releases/download/v1.0"
-files = {
-    "matcha_ljspeech.ckpt": "matcha_ljspeech.ckpt",
-    "matcha_vctk.ckpt": "matcha_vctk.ckpt",
-    "hifigan_T2_v1": "generator_v1",
-    "hifigan_univ_v1": "g_02500000",
-}
-for out_name, asset in files.items():
-    out = os.path.join(dest, out_name)
-    print(f"downloading {asset} -> {out}", flush=True)
-    urllib.request.urlretrieve(f"{base}/{asset}", out)
-PY
+# Bake the checkpoints into the image. get_user_data_dir() honors MATCHA_HOME,
+# so the app finds these and skips all runtime downloads.
+RUN CKPT_DIR="$MATCHA_HOME/matcha_tts" \
+ && mkdir -p "$CKPT_DIR" \
+ && BASE=https://github.com/shivammehta25/Matcha-TTS-checkpoints/releases/download/v1.0 \
+ && curl -fL -o "$CKPT_DIR/matcha_ljspeech.ckpt" "$BASE/matcha_ljspeech.ckpt" \
+ && curl -fL -o "$CKPT_DIR/matcha_vctk.ckpt"     "$BASE/matcha_vctk.ckpt" \
+ && curl -fL -o "$CKPT_DIR/hifigan_T2_v1"        "$BASE/generator_v1" \
+ && curl -fL -o "$CKPT_DIR/hifigan_univ_v1"      "$BASE/g_02500000"
 
 EXPOSE 7860
 CMD ["python", "app.py"]
