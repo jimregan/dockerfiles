@@ -1,4 +1,5 @@
-FROM pytorch/pytorch:latest
+ARG PYTORCH_IMAGE=pytorch/pytorch:2.12.0-cuda12.6-cudnn9-devel
+FROM ${PYTORCH_IMAGE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,4 +20,3 @@ COPY docker/ctc-forced-aligner/run-align.sh /usr/local/bin/run-align
 RUN chmod +x /usr/local/bin/run-align
 
 ENTRYPOINT ["run-align"]
-
