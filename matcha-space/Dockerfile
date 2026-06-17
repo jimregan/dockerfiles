@@ -1,7 +1,9 @@
 FROM python:3.10-slim
 
+# get_user_data_dir() returns Path(MATCHA_HOME)/"matcha_tts", so MATCHA_HOME is
+# the parent: the app reads checkpoints from /data/matcha_tts.
 ENV DEBIAN_FRONTEND=noninteractive \
-    MATCHA_HOME=/data/matcha_tts \
+    MATCHA_HOME=/data \
     GRADIO_SERVER_NAME=0.0.0.0 \
     GRADIO_SERVER_PORT=7860
 
@@ -27,16 +29,18 @@ RUN pip install --no-cache-dir -U pip \
         "uvicorn>=0.14.0" \
         "websockets>=10.4" \
         spaces \
-        "huggingface_hub<0.26"
+        "huggingface_hub<0.26" \
+        "torch<2.6"
 
 # Bake the checkpoints into the image. get_user_data_dir() honors MATCHA_HOME,
 # so the app finds these and skips all runtime downloads.
-RUN mkdir -p "$MATCHA_HOME" \
+RUN CKPT_DIR="$MATCHA_HOME/matcha_tts" \
+ && mkdir -p "$CKPT_DIR" \
  && BASE=https://github.com/shivammehta25/Matcha-TTS-checkpoints/releases/download/v1.0 \
- && curl -fL -o "$MATCHA_HOME/matcha_ljspeech.ckpt" "$BASE/matcha_ljspeech.ckpt" \
- && curl -fL -o "$MATCHA_HOME/matcha_vctk.ckpt"     "$BASE/matcha_vctk.ckpt" \
- && curl -fL -o "$MATCHA_HOME/hifigan_T2_v1"        "$BASE/generator_v1" \
- && curl -fL -o "$MATCHA_HOME/hifigan_univ_v1"      "$BASE/g_02500000"
+ && curl -fL -o "$CKPT_DIR/matcha_ljspeech.ckpt" "$BASE/matcha_ljspeech.ckpt" \
+ && curl -fL -o "$CKPT_DIR/matcha_vctk.ckpt"     "$BASE/matcha_vctk.ckpt" \
+ && curl -fL -o "$CKPT_DIR/hifigan_T2_v1"        "$BASE/generator_v1" \
+ && curl -fL -o "$CKPT_DIR/hifigan_univ_v1"      "$BASE/g_02500000"
 
 EXPOSE 7860
 CMD ["python", "app.py"]
