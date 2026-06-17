@@ -29,18 +29,7 @@ RUN pip install --no-cache-dir -U pip \
         "uvicorn>=0.14.0" \
         "websockets>=10.4" \
         spaces \
-        "huggingface_hub<0.26" \
-        "torch<2.6"
-
-# Bake the checkpoints into the image. get_user_data_dir() honors MATCHA_HOME,
-# so the app finds these and skips all runtime downloads.
-RUN CKPT_DIR="$MATCHA_HOME/matcha_tts" \
- && mkdir -p "$CKPT_DIR" \
- && BASE=https://github.com/shivammehta25/Matcha-TTS-checkpoints/releases/download/v1.0 \
- && curl -fL -o "$CKPT_DIR/matcha_ljspeech.ckpt" "$BASE/matcha_ljspeech.ckpt" \
- && curl -fL -o "$CKPT_DIR/matcha_vctk.ckpt"     "$BASE/matcha_vctk.ckpt" \
- && curl -fL -o "$CKPT_DIR/hifigan_T2_v1"        "$BASE/generator_v1" \
- && curl -fL -o "$CKPT_DIR/hifigan_univ_v1"      "$BASE/g_02500000"
+        "huggingface_hub<0.26"
 
 EXPOSE 7860
 CMD ["python", "app.py"]
