@@ -1,7 +1,5 @@
 FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
-# get_user_data_dir() returns Path(MATCHA_HOME)/"matcha_tts", so MATCHA_HOME is
-# the parent: the app reads checkpoints from /data/matcha_tts.
 ENV DEBIAN_FRONTEND=noninteractive \
     MATCHA_HOME=/data \
     GRADIO_SERVER_NAME=0.0.0.0 \
@@ -18,8 +16,6 @@ WORKDIR /app
 
 RUN git clone --depth 1 https://huggingface.co/spaces/kth-tmh/Matcha-TTS /app
 
-# torch is already provided by the base image. huggingface_hub<0.26 keeps
-# cached_download available for the old diffusers that matcha-tts pulls in.
 RUN pip install --no-cache-dir -U pip \
  && pip install --no-cache-dir -r requirements.txt \
         "gradio[oauth]==3.44.3" \
@@ -28,8 +24,6 @@ RUN pip install --no-cache-dir -U pip \
         spaces \
         "huggingface_hub<0.26"
 
-# Download the checkpoints into the image so there is no runtime download,
-# using matcha-tts's own downloader exactly as app.py does.
 RUN python - <<'PY'
 from pathlib import Path
 
