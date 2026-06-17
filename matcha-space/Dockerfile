@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir -U pip \
         "uvicorn>=0.14.0" \
         "websockets>=10.4" \
         spaces \
-        "huggingface_hub<0.26"
+        "huggingface_hub<0.26" \
+        "torch<2.6"
 
 # Bake the checkpoints into the image. get_user_data_dir() honors MATCHA_HOME,
 # so the app finds these and skips all runtime downloads.
@@ -41,9 +42,6 @@ RUN CKPT_DIR="$MATCHA_HOME/matcha_tts" \
  && curl -fL -o "$CKPT_DIR/hifigan_T2_v1"        "$BASE/generator_v1" \
  && curl -fL -o "$CKPT_DIR/hifigan_univ_v1"      "$BASE/g_02500000"
 
-# Patch torch.load (weights_only) before importing the app; see entrypoint.py.
-COPY entrypoint.py /entrypoint.py
-
 EXPOSE 7860
-CMD ["python", "/entrypoint.py"]
+CMD ["python", "app.py"]
 
