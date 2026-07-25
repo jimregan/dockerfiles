@@ -7,6 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         espeak-ng \
+        build-essential \
         libsndfile1 \
         git \
         ca-certificates \
@@ -18,7 +19,7 @@ RUN git clone --depth 1 https://huggingface.co/spaces/kth-tmh/Matcha-TTS /app
 
 RUN pip install --no-cache-dir -U pip \
  && pip install --no-cache-dir -r requirements.txt \
-        "gradio[oauth]==3.44.3" \
+        "gradio[oauth]==3.43.2" \
         "uvicorn>=0.14.0" \
         "websockets>=10.4" \
         spaces \
