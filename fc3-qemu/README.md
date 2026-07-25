@@ -1,12 +1,12 @@
 # Fedora Core 3 in QEMU in Docker
 
-This repo builds a Fedora Core 3 VM image and wraps it in three Docker images (names/paths still say `rhl72-*` for historical reasons — the project moved from RHL 7.2 to FC3 because the Tcl NPAPI plugin needs Mozilla 1.0+, which RHL 7.2's bundled Mozilla predates):
+This repo builds a Fedora Core 3 VM image and wraps it in three Docker images:
 
-- `rhl72-interactive`: boots the installed FC3 VM with noVNC and SSH so you can debug the old Tcl plugin build manually.
-- `rhl72-builder`: boots a clean copy of that VM, copies in `./rpmbuild`, runs `rpmbuild`, and writes RPMs to `./output`.
-- `rhl72-final`: starts from the clean installed VM, installs the RPMs from `./output`, and boots Mozilla with the Tcl plugin installed.
+- `fc3-interactive`: boots the installed FC3 VM with noVNC and SSH so you can debug the old Tcl plugin build manually.
+- `fc3-builder`: boots a clean copy of that VM, copies in `./rpmbuild`, runs `rpmbuild`, and writes RPMs to `./output`.
+- `fc3-final`: starts from the clean installed VM, installs the RPMs from `./output`, and boots Mozilla with the Tcl plugin installed.
 
-The VM disk is created once into an intermediate Docker image named `rhl72-installed`. The three images above inherit that disk.
+The VM disk is created once into an intermediate Docker image named `fc3-installed`. The three images above inherit that disk.
 
 ## Inputs
 
@@ -37,13 +37,13 @@ To remove stale containers/images from earlier attempts:
 ./clean.sh
 ```
 
-This prepares the merged install tree if needed, performs the FC3 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
+This prepares the merged install tree if needed, performs the FC3 kickstart install inside QEMU, commits the resulting disk into `fc3-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
 
 ```bash
 ISO_DIR=/path/to/fc3-isos ./build.sh
 ```
 
-The installer defaults to software CPU emulation with a Pentium II CPU model, matching the historical RHL 7.2-era default. To try KVM during install:
+The installer defaults to software CPU emulation with a Pentium II CPU model, since old installer kernels can hang under KVM host CPU passthrough on modern hardware. To try KVM during install:
 
 ```bash
 INSTALL_USE_KVM=1 ISO_DIR=/path/to/fc3-isos ./build.sh
@@ -108,7 +108,7 @@ During the final image build, the RPMs are installed into the guest disk and `/r
 
 ## Tcl Plugin Notes
 
-FC3 ships Mozilla 1.7 and Tcl/Tk 8.4, which is what the last version of the Tcl plugin needs (RHL 7.2's bundled Mozilla 0.9.x predates the plugin's minimum of Mozilla 1.0 — that's why this project moved to FC3). The target plugin artifact should be installed by the RPM into Mozilla's plugin directory, usually:
+FC3 ships Mozilla 1.7 and Tcl/Tk 8.4, which is what the last version of the Tcl plugin needs (the plugin's minimum is Mozilla 1.0). The target plugin artifact should be installed by the RPM into Mozilla's plugin directory, usually:
 
 ```text
 /usr/lib/mozilla/plugins/
