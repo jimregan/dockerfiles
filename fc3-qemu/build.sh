@@ -34,7 +34,7 @@ mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES
 docker build -f Dockerfile.base -t rhl72-base .
 
 # Step 2: build the merged install tree if it is not already present
-if [ ! -d "$TREE_DIR_ABS/RedHat" ]; then
+if [ ! -d "$TREE_DIR_ABS/Fedora" ]; then
     echo "Preparing merged Fedora Core 3 install tree in Docker..."
     mkdir -p "$TREE_PARENT"
     docker run --rm --privileged \
