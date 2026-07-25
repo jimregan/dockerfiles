@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the RHL 7.2 VM with VNC on :0 (port 5900) and SSH forwarded to 2222.
+# Start the FC3 VM with VNC on :0 (port 5900) and SSH forwarded to 2222.
 set -euo pipefail
 
 . /rhl72/scripts/common.sh
@@ -22,7 +22,7 @@ qemu-system-i386 \
     -m 256 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
+    -device rtl8139,netdev=net0 \
     $KVM_FLAG \
     -no-acpi \
     -vga cirrus \

@@ -125,7 +125,7 @@ require_bootable_disk() {
 
     if [ "$signature" != "55aa" ]; then
         echo "$disk exists, but it does not contain a bootable MBR signature."
-        echo "The RHL 7.2 install likely did not complete. Re-run: ISO_DIR=/path/to/isos ./build.sh"
+        echo "The FC3 install likely did not complete. Re-run: ISO_DIR=/path/to/isos ./build.sh"
         echo "First sector:"
         od -Ax -tx1 "$mbr"
         rm -f "$mbr"
@@ -134,7 +134,7 @@ require_bootable_disk() {
 
     if [ "$partitions" = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" ]; then
         echo "$disk has an MBR signature, but the partition table is empty."
-        echo "The RHL 7.2 installer did not partition the disk successfully."
+        echo "The FC3 installer did not partition the disk successfully."
         echo "First sector:"
         od -Ax -tx1 "$mbr"
         rm -f "$mbr"

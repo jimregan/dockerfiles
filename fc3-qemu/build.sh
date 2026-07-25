@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-ISO_DIR=${ISO_DIR:?Please set ISO_DIR to the directory containing your RHL 7.2 ISOs}
+ISO_DIR=${ISO_DIR:?Please set ISO_DIR to the directory containing your Fedora Core 3 ISOs}
 ROOT_PASSWORD=${ROOT_PASSWORD:-rootpassword}
 INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
 INSTALL_VNC=${INSTALL_VNC:-0}
-BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-$(pwd)/tree}
@@ -26,6 +25,8 @@ DOCKER_DNS_ARGS=${DOCKER_DNS_ARGS:-}
 
 [ -f "$ISO_DIR_ABS/disc1.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc1.iso"; exit 1; }
 [ -f "$ISO_DIR_ABS/disc2.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc2.iso"; exit 1; }
+[ -f "$ISO_DIR_ABS/disc3.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc3.iso"; exit 1; }
+[ -f "$ISO_DIR_ABS/disc4.iso" ] || { echo "Missing ISO: $ISO_DIR_ABS/disc4.iso"; exit 1; }
 
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
@@ -34,7 +35,7 @@ docker build -f Dockerfile.base -t rhl72-base .
 
 # Step 2: build the merged install tree if it is not already present
 if [ ! -d "$TREE_DIR_ABS/RedHat" ]; then
-    echo "Preparing merged RHL 7.2 install tree in Docker..."
+    echo "Preparing merged Fedora Core 3 install tree in Docker..."
     mkdir -p "$TREE_PARENT"
     docker run --rm --privileged \
         $DOCKER_DNS_ARGS \
@@ -44,11 +45,13 @@ if [ ! -d "$TREE_DIR_ABS/RedHat" ]; then
         bash /rhl72/scripts/prep-tree.sh \
             /rhl72/isos/disc1.iso \
             /rhl72/isos/disc2.iso \
+            /rhl72/isos/disc3.iso \
+            /rhl72/isos/disc4.iso \
             "/rhl72/tree-parent/$TREE_BASE"
 fi
 
-# Step 3: run the RHL 7.2 installer, commit disk into rhl72-installed
-echo "Running RHL 7.2 installer (no KVM = slow)..."
+# Step 3: run the Fedora Core 3 installer, commit disk into rhl72-installed
+echo "Running Fedora Core 3 installer (no KVM = slow)..."
 KVM=""
 [ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
 PORTS=""
@@ -62,7 +65,6 @@ CID=$(docker run -d --privileged $KVM $PORTS \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
     -e INSTALL_VNC="$INSTALL_VNC" \
-    -e BOOT_IMAGE="$BOOT_IMAGE" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
     -e TREE_DIR=/rhl72/tree \

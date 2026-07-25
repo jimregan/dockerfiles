@@ -1,0 +1,117 @@
+# Fedora Core 3 in QEMU in Docker
+
+This repo builds a Fedora Core 3 VM image and wraps it in three Docker images (names/paths still say `rhl72-*` for historical reasons — the project moved from RHL 7.2 to FC3 because the Tcl NPAPI plugin needs Mozilla 1.0+, which RHL 7.2's bundled Mozilla predates):
+
+- `rhl72-interactive`: boots the installed FC3 VM with noVNC and SSH so you can debug the old Tcl plugin build manually.
+- `rhl72-builder`: boots a clean copy of that VM, copies in `./rpmbuild`, runs `rpmbuild`, and writes RPMs to `./output`.
+- `rhl72-final`: starts from the clean installed VM, installs the RPMs from `./output`, and boots Mozilla with the Tcl plugin installed.
+
+The VM disk is created once into an intermediate Docker image named `rhl72-installed`. The three images above inherit that disk.
+
+## Inputs
+
+Put the Fedora Core 3 install ISOs on the host and point `ISO_DIR` at them. The installer script expects all four install discs (FC3 does not ship a single-DVD image):
+
+- `disc1.iso`
+- `disc2.iso`
+- `disc3.iso`
+- `disc4.iso`
+
+`./build.sh` creates a merged install tree at `./tree` by running `scripts/prep-tree.sh` inside the Docker image. The prep container is privileged because it loop-mounts the ISOs. Disc 1 is copied in full (it carries `isolinux/`, `images/`, and `Fedora/base`); discs 2-4 only contribute their `Fedora/RPMS`.
+
+The old Tcl plugin RPM inputs should use the normal rpmbuild layout under `./rpmbuild`:
+
+```text
+rpmbuild/
+  SOURCES/
+  SPECS/
+```
+
+At minimum, `rpmbuild/SPECS` must contain one `.spec` file before running the builder.
+
+## Build the Installed VM
+
+To remove stale containers/images from earlier attempts:
+
+```bash
+./clean.sh
+```
+
+This prepares the merged install tree if needed, performs the FC3 kickstart install inside QEMU, commits the resulting disk into `rhl72-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
+
+```bash
+ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
+The installer defaults to software CPU emulation with a Pentium II CPU model, matching the historical RHL 7.2-era default. To try KVM during install:
+
+```bash
+INSTALL_USE_KVM=1 ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
+If the installer appears stuck, run it with noVNC enabled and open `http://server:6080/vnc.html`:
+
+```bash
+INSTALL_VNC=1 ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
+FC3 discs boot via isolinux, not a boot floppy, so the installer extracts `isolinux/vmlinuz` and `isolinux/initrd.img` straight from disc 1 and boots them with QEMU's `-kernel`/`-initrd`/`-append "ks=floppy text"`. `kickstart.cfg` is written to a small freshly-created FAT floppy image as `ks.cfg`/`KS.CFG` and attached as the floppy drive — the boot media and the kickstart source are independent, so no ISO remastering is needed. The merged install tree is copied into a temporary FAT32 disk image, attached as IDE disk `hdb`, and used via kickstart `harddrive --partition hdb --dir /`.
+
+The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
+
+```bash
+ROOT_PASSWORD=your-password ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
+## Image 1: Interactive Development
+
+```bash
+docker compose up interactive
+```
+
+Access:
+
+- noVNC: `http://localhost:6080/vnc.html`
+- SSH: `ssh -p 2222 root@localhost`
+
+Use this VM to work out the source tarball, build dependencies, spec file, and `rpmbuild` invocation. Put the resulting files in the host `./rpmbuild` tree so the automated builder can use them.
+
+## Image 2: RPM Builder
+
+```bash
+docker compose --profile build build builder
+docker compose --profile build run --rm builder
+```
+
+The builder mounts:
+
+- `./rpmbuild` read-only at `/rpmbuild`
+- `./output` at `/output`
+
+On success, RPMs are copied to `./output`.
+
+## Image 3: Final Mozilla Runtime
+
+Build this only after the builder has produced RPMs in `./output`. If `./output` contains no RPMs, the final image build stops with an explicit error.
+
+```bash
+docker compose --profile final build final
+docker compose --profile final up final
+```
+
+Access:
+
+- noVNC: `http://localhost:6080/vnc.html`
+- SSH: `ssh -p 2222 root@localhost`
+
+During the final image build, the RPMs are installed into the guest disk and `/root/.xinitrc` is configured to launch Mozilla. On boot, the VM starts X on QEMU's VNC display.
+
+## Tcl Plugin Notes
+
+FC3 ships Mozilla 1.7 and Tcl/Tk 8.4, which is what the last version of the Tcl plugin needs (RHL 7.2's bundled Mozilla 0.9.x predates the plugin's minimum of Mozilla 1.0 — that's why this project moved to FC3). The target plugin artifact should be installed by the RPM into Mozilla's plugin directory, usually:
+
+```text
+/usr/lib/mozilla/plugins/
+```
+
+The historical Tcl plugin build usually needs Tcl/Tk headers, X11 headers, and NPAPI headers. The kickstart installs Tcl/Tk, X.org (`xorg-x11`, replacing XFree86 as of FC3), Mozilla, compiler, and rpm-build packages; if Mozilla's RPM does not include the NPAPI headers, put the matching Mozilla 1.7 headers in `rpmbuild/SOURCES` and reference them from the spec.

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install RHL 7.2 into a qcow2 disk image.
+# Install Fedora Core 3 into a qcow2 disk image.
 set -euo pipefail
 
 [ "${TRACE:-0}" = "1" ] && set -x
@@ -8,20 +8,20 @@ set -euo pipefail
 
 DISC1=${DISC1:-/rhl72/isos/disc1.iso}
 DISK=${DISK:-/disk/rhl72.qcow2}
-BOOT_IMAGE=${BOOT_IMAGE:-boot.img}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-/rhl72/tree}
 TREE_IMAGE_MB=${TREE_IMAGE_MB:-0}
 WORK=/tmp/rhl72-install
 MNT1="$WORK/disc1"
-BOOT_FLOPPY="$WORK/boot-ks.img"
+KERNEL="$WORK/vmlinuz"
+INITRD="$WORK/initrd.img"
+KS_FLOPPY="$WORK/ks-floppy.img"
 TREE_IMAGE="$WORK/install-tree.img"
-SYSLINUX_CFG="$WORK/SYSLINUX.CFG"
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260507-fatdisk-2
+INSTALL_SCRIPT_REV=20260725-fc3-isolinux
 
 fail() {
     INSTALL_ERROR=$1
@@ -39,12 +39,11 @@ cleanup() {
     if [ "$exit_code" != "0" ]; then
         set +x
         echo
-        echo "=== RHL72 INSTALL FAILURE SUMMARY ==="
+        echo "=== FC3 INSTALL FAILURE SUMMARY ==="
         echo "script_revision=$INSTALL_SCRIPT_REV"
         echo "status=$INSTALL_STATUS"
         echo "error=${INSTALL_ERROR:-unset}"
         echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
-        echo "boot_image=$BOOT_IMAGE"
         echo "install_tree=$TREE_DIR"
         echo "install_tree_image=$TREE_IMAGE"
         echo "install_mem=$INSTALL_MEM"
@@ -60,7 +59,7 @@ trap cleanup EXIT
 require_inputs() {
     [ -f "$DISC1" ] || fail "Missing disc1 ISO: $DISC1"
     [ -f /rhl72/kickstart.cfg ] || fail "Missing kickstart: /rhl72/kickstart.cfg"
-    [ -d "$TREE_DIR/RedHat" ] || fail "Missing install tree: $TREE_DIR/RedHat"
+    [ -d "$TREE_DIR/Fedora" ] || fail "Missing install tree: $TREE_DIR/Fedora"
 }
 
 prepare_workspace() {
@@ -68,41 +67,29 @@ prepare_workspace() {
     mkdir -p "$MNT1"
 }
 
-mount_boot_iso() {
-    INSTALL_STATUS="mounting-boot-iso"
+extract_installer_kernel() {
+    INSTALL_STATUS="extracting-installer-kernel"
     mount -o loop,ro "$DISC1" "$MNT1"
+
+    [ -f "$MNT1/isolinux/vmlinuz" ] || fail "Cannot find $MNT1/isolinux/vmlinuz"
+    [ -f "$MNT1/isolinux/initrd.img" ] || fail "Cannot find $MNT1/isolinux/initrd.img"
+
+    cp "$MNT1/isolinux/vmlinuz" "$KERNEL"
+    cp "$MNT1/isolinux/initrd.img" "$INITRD"
+
+    umount "$MNT1"
 }
 
-make_boot_floppy() {
-    local source="$MNT1/images/$BOOT_IMAGE"
+make_ks_floppy() {
+    INSTALL_STATUS="creating-ks-floppy"
 
-    INSTALL_STATUS="creating-boot-floppy"
+    qemu-img create -f raw "$KS_FLOPPY" 1440k
+    mkfs.msdos "$KS_FLOPPY" >/dev/null
+    mcopy -o -i "$KS_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg
+    mcopy -o -i "$KS_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
 
-    [ -f "$source" ] || {
-        echo "Available images:"
-        find "$MNT1/images" -maxdepth 1 -type f -print || true
-        fail "Cannot find boot floppy image: $source"
-    }
-
-    cp "$source" "$BOOT_FLOPPY"
-    mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
-    mcopy -o -i "$BOOT_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg || true
-    mcopy -i "$BOOT_FLOPPY" ::SYSLINUX.CFG "$SYSLINUX_CFG"
-    sed -i 's/^[Dd][Ee][Ff][Aa][Uu][Ll][Tt][[:space:]].*/default linux/' "$SYSLINUX_CFG"
-    sed -i 's/^[Pp][Rr][Oo][Mm][Pp][Tt][[:space:]].*/prompt 0/' "$SYSLINUX_CFG"
-    sed -i 's/^[Tt][Ii][Mm][Ee][Oo][Uu][Tt][[:space:]].*/timeout 0/' "$SYSLINUX_CFG"
-    sed -i '/^[Ll][Aa][Bb][Ee][Ll][[:space:]]\+[Ll][Ii][Nn][Uu][Xx][[:space:]]*$/,/^[Ll][Aa][Bb][Ee][Ll][[:space:]]/ {
-        /^[[:space:]]*[Aa][Pp][Pp][Ee][Nn][Dd][[:space:]]/ {
-            /[[:space:]]ks=floppy\([[:space:]]\|$\)/! s/$/ ks=floppy/
-        }
-    }' "$SYSLINUX_CFG"
-    mcopy -o -i "$BOOT_FLOPPY" "$SYSLINUX_CFG" ::SYSLINUX.CFG
-
-    echo "Boot floppy image: images/$BOOT_IMAGE"
-    echo "Boot floppy syslinux.cfg:"
-    mtype -i "$BOOT_FLOPPY" ::syslinux.cfg
-    echo "Boot floppy root:"
-    mdir -i "$BOOT_FLOPPY" ::
+    echo "Kickstart floppy root:"
+    mdir -i "$KS_FLOPPY" ::
 }
 
 make_install_tree_disk() {
@@ -126,7 +113,7 @@ make_install_tree_disk() {
     echo "Install tree FAT disk: ${image_mb}M"
 
     qemu-img create -f raw "$TREE_IMAGE" "${image_mb}M"
-    mkfs.vfat -F 32 -n RHL72TREE "$TREE_IMAGE"
+    mkfs.vfat -F 32 -n FC3TREE "$TREE_IMAGE"
     mcopy -s -i "$TREE_IMAGE" "$TREE_DIR"/* ::
     echo "Install tree FAT disk root:"
     mdir -i "$TREE_IMAGE" ::
@@ -156,12 +143,14 @@ run_installer() {
     set +e
     qemu-system-i386 \
         -m "$INSTALL_MEM" \
+        -kernel "$KERNEL" \
+        -initrd "$INITRD" \
+        -append "ks=floppy text" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
-        -drive file="$BOOT_FLOPPY",format=raw,if=floppy,index=0 \
-        -boot a \
+        -drive file="$KS_FLOPPY",format=raw,if=floppy,index=0 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device ne2k_isa,netdev=net0,irq=10,iobase=0x300 \
+        -device rtl8139,netdev=net0 \
         $CPU_FLAG \
         -no-acpi \
         $DISPLAY_ARGS \
@@ -187,8 +176,8 @@ validate_install() {
 echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 require_inputs
 prepare_workspace
-mount_boot_iso
-make_boot_floppy
+extract_installer_kernel
+make_ks_floppy
 make_install_tree_disk
 start_display_proxy
 run_installer
