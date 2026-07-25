@@ -1,5 +1,8 @@
 FROM rhl72-installed
 
+COPY scripts/ /rhl72/scripts/
+RUN chmod +x /rhl72/scripts/*.sh
+
 EXPOSE 6080
 EXPOSE 2222
 
