@@ -4,9 +4,9 @@
 # The VM will start an X session with Mozilla on boot.
 set -euo pipefail
 
-. /rhl72/scripts/common.sh
+. /fc3/scripts/common.sh
 
-DISK=/disk/rhl72.qcow2
+DISK=/disk/fc3.qcow2
 require_bootable_disk "$DISK"
 
 KVM_FLAG=$(qemu_kvm_args)

@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.interactive
-    image: rhl72-interactive
+    image: fc3-interactive
     privileged: true
     devices:
       - /dev/kvm:/dev/kvm
@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.builder
-    image: rhl72-builder
+    image: fc3-builder
     privileged: true
     devices:
       - /dev/kvm:/dev/kvm
@@ -32,7 +32,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.final
-    image: rhl72-final
+    image: fc3-final
     privileged: true
     devices:
       - /dev/kvm:/dev/kvm

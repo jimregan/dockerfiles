@@ -9,9 +9,9 @@ DISC1=$1
 DISC2=$2
 DISC3=$3
 DISC4=$4
-OUTDIR=${5:-/rhl72/tree}
+OUTDIR=${5:-/fc3/tree}
 
-MNT=${MNT:-/tmp/rhl72-prep-tree}
+MNT=${MNT:-/tmp/fc3-prep-tree}
 STAGE="$OUTDIR.incomplete"
 cleanup() {
     local exit_code=$?

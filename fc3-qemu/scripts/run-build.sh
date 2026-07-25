@@ -2,9 +2,9 @@
 # Boot the VM headlessly, copy in the spec file, run rpmbuild, copy out the RPM.
 set -euo pipefail
 
-. /rhl72/scripts/common.sh
+. /fc3/scripts/common.sh
 
-DISK=/disk/rhl72.qcow2
+DISK=/disk/fc3.qcow2
 SPEC_SRC=/rpmbuild
 RPM_OUT=/output
 require_bootable_disk "$DISK"

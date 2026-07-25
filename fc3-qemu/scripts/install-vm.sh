@@ -4,14 +4,14 @@ set -euo pipefail
 
 [ "${TRACE:-0}" = "1" ] && set -x
 
-. /rhl72/scripts/common.sh
+. /fc3/scripts/common.sh
 
-DISC1=${DISC1:-/rhl72/isos/disc1.iso}
-DISK=${DISK:-/disk/rhl72.qcow2}
+DISC1=${DISC1:-/fc3/isos/disc1.iso}
+DISK=${DISK:-/disk/fc3.qcow2}
 INSTALL_MEM=${INSTALL_MEM:-256}
-TREE_DIR=${TREE_DIR:-/rhl72/tree}
+TREE_DIR=${TREE_DIR:-/fc3/tree}
 TREE_IMAGE_MB=${TREE_IMAGE_MB:-0}
-WORK=/tmp/rhl72-install
+WORK=/tmp/fc3-install
 MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
 INITRD="$WORK/initrd.img"
@@ -58,7 +58,7 @@ trap cleanup EXIT
 
 require_inputs() {
     [ -f "$DISC1" ] || fail "Missing disc1 ISO: $DISC1"
-    [ -f /rhl72/kickstart.cfg ] || fail "Missing kickstart: /rhl72/kickstart.cfg"
+    [ -f /fc3/kickstart.cfg ] || fail "Missing kickstart: /fc3/kickstart.cfg"
     [ -d "$TREE_DIR/Fedora" ] || fail "Missing install tree: $TREE_DIR/Fedora"
 }
 
@@ -85,8 +85,8 @@ make_ks_floppy() {
 
     qemu-img create -f raw "$KS_FLOPPY" 1440k
     mkfs.msdos "$KS_FLOPPY" >/dev/null
-    mcopy -o -i "$KS_FLOPPY" /rhl72/kickstart.cfg ::ks.cfg
-    mcopy -o -i "$KS_FLOPPY" /rhl72/kickstart.cfg ::KS.CFG
+    mcopy -o -i "$KS_FLOPPY" /fc3/kickstart.cfg ::ks.cfg
+    mcopy -o -i "$KS_FLOPPY" /fc3/kickstart.cfg ::KS.CFG
 
     echo "Kickstart floppy root:"
     mdir -i "$KS_FLOPPY" ::

@@ -2,9 +2,9 @@
 # Start the FC3 VM with VNC on :0 (port 5900) and SSH forwarded to 2222.
 set -euo pipefail
 
-. /rhl72/scripts/common.sh
+. /fc3/scripts/common.sh
 
-DISK=${1:-/disk/rhl72.qcow2}
+DISK=${1:-/disk/fc3.qcow2}
 require_bootable_disk "$DISK"
 
 if [ -e /dev/kvm ]; then

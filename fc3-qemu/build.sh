@@ -31,7 +31,7 @@ DOCKER_DNS_ARGS=${DOCKER_DNS_ARGS:-}
 mkdir -p output rpmbuild/BUILD rpmbuild/BUILDROOT rpmbuild/RPMS rpmbuild/SOURCES rpmbuild/SPECS rpmbuild/SRPMS
 
 # Step 1: base image with QEMU and scripts
-docker build -f Dockerfile.base -t rhl72-base .
+docker build -f Dockerfile.base -t fc3-base .
 
 # Step 2: build the merged install tree if it is not already present
 if [ ! -d "$TREE_DIR_ABS/Fedora" ]; then
@@ -39,18 +39,18 @@ if [ ! -d "$TREE_DIR_ABS/Fedora" ]; then
     mkdir -p "$TREE_PARENT"
     docker run --rm --privileged \
         $DOCKER_DNS_ARGS \
-        -v "$ISO_DIR_ABS":/rhl72/isos:ro \
-        -v "$TREE_PARENT":/rhl72/tree-parent \
-        rhl72-base \
-        bash /rhl72/scripts/prep-tree.sh \
-            /rhl72/isos/disc1.iso \
-            /rhl72/isos/disc2.iso \
-            /rhl72/isos/disc3.iso \
-            /rhl72/isos/disc4.iso \
-            "/rhl72/tree-parent/$TREE_BASE"
+        -v "$ISO_DIR_ABS":/fc3/isos:ro \
+        -v "$TREE_PARENT":/fc3/tree-parent \
+        fc3-base \
+        bash /fc3/scripts/prep-tree.sh \
+            /fc3/isos/disc1.iso \
+            /fc3/isos/disc2.iso \
+            /fc3/isos/disc3.iso \
+            /fc3/isos/disc4.iso \
+            "/fc3/tree-parent/$TREE_BASE"
 fi
 
-# Step 3: run the Fedora Core 3 installer, commit disk into rhl72-installed
+# Step 3: run the Fedora Core 3 installer, commit disk into fc3-installed
 echo "Running Fedora Core 3 installer (no KVM = slow)..."
 KVM=""
 [ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
@@ -59,17 +59,17 @@ PORTS=""
 
 CID=$(docker run -d --privileged $KVM $PORTS \
     $DOCKER_DNS_ARGS \
-    -v "$ISO_DIR_ABS":/rhl72/isos:ro \
-    -v "$TREE_DIR_ABS":/rhl72/tree:ro \
-    -v "$(pwd)/kickstart.cfg":/rhl72/kickstart.cfg:ro \
+    -v "$ISO_DIR_ABS":/fc3/isos:ro \
+    -v "$TREE_DIR_ABS":/fc3/tree:ro \
+    -v "$(pwd)/kickstart.cfg":/fc3/kickstart.cfg:ro \
     -e ROOT_PASSWORD="$ROOT_PASSWORD" \
     -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
     -e INSTALL_VNC="$INSTALL_VNC" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
-    -e TREE_DIR=/rhl72/tree \
-    rhl72-base \
-    bash /rhl72/scripts/install-vm.sh)
+    -e TREE_DIR=/fc3/tree \
+    fc3-base \
+    bash /fc3/scripts/install-vm.sh)
 
 docker logs -f "$CID"
 EXIT=$(docker wait "$CID")
@@ -81,12 +81,12 @@ if [ "$EXIT" != "0" ]; then
     echo "=== END INSTALLER LOGS exit=$EXIT ==="
     exit 1
 fi
-docker commit "$CID" rhl72-installed
+docker commit "$CID" fc3-installed
 docker rm "$CID"
 
 # Step 4: images used after the guest OS is installed
-docker build -f Dockerfile.interactive -t rhl72-interactive .
-docker build -f Dockerfile.builder -t rhl72-builder .
+docker build -f Dockerfile.interactive -t fc3-interactive .
+docker build -f Dockerfile.builder -t fc3-builder .
 
 echo ""
 echo "Done. Next steps:"

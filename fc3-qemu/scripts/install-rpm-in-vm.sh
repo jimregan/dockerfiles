@@ -3,9 +3,9 @@
 # The committed container layer will contain the updated disk image.
 set -euo pipefail
 
-. /rhl72/scripts/common.sh
+. /fc3/scripts/common.sh
 
-DISK=/disk/rhl72.qcow2
+DISK=/disk/fc3.qcow2
 require_bootable_disk "$DISK"
 
 if ! find /rpms -maxdepth 1 -name '*.rpm' -print -quit 2>/dev/null | grep -q .; then

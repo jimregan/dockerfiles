@@ -1,11 +1,11 @@
-FROM rhl72-installed
+FROM fc3-installed
 
-COPY scripts/ /rhl72/scripts/
-RUN chmod +x /rhl72/scripts/*.sh
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh
 
 EXPOSE 6080
 EXPOSE 2222
 
 VOLUME ["/workspace"]
 
-CMD ["bash", "/rhl72/scripts/run-interactive.sh"]
+CMD ["bash", "/fc3/scripts/run-interactive.sh"]

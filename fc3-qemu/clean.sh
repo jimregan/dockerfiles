@@ -2,18 +2,18 @@
 set -euo pipefail
 
 IMAGES=(
-    rhl72-final
-    rhl72-builder
-    rhl72-interactive
-    rhl72-installed
-    rhl72-base
+    fc3-final
+    fc3-builder
+    fc3-interactive
+    fc3-installed
+    fc3-base
 )
 
-containers=$(docker ps -aq --filter "ancestor=rhl72-base" \
-    --filter "ancestor=rhl72-installed" \
-    --filter "ancestor=rhl72-interactive" \
-    --filter "ancestor=rhl72-builder" \
-    --filter "ancestor=rhl72-final")
+containers=$(docker ps -aq --filter "ancestor=fc3-base" \
+    --filter "ancestor=fc3-installed" \
+    --filter "ancestor=fc3-interactive" \
+    --filter "ancestor=fc3-builder" \
+    --filter "ancestor=fc3-final")
 
 if [ -n "$containers" ]; then
     docker rm -f $containers
@@ -26,4 +26,4 @@ for image in "${IMAGES[@]}"; do
     fi
 done
 
-echo "Removed RHL72 containers and images."
+echo "Removed FC3 containers and images."

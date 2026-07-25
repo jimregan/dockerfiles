@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN mkdir -p /disk
 
-WORKDIR /rhl72
+WORKDIR /fc3
 
-COPY scripts/ /rhl72/scripts/
-RUN chmod +x /rhl72/scripts/*.sh
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh

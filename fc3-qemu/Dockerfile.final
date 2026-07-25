@@ -1,12 +1,12 @@
-FROM rhl72-installed
+FROM fc3-installed
 
-COPY scripts/ /rhl72/scripts/
-RUN chmod +x /rhl72/scripts/*.sh
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh
 
 COPY output/ /rpms/
-RUN bash /rhl72/scripts/install-rpm-in-vm.sh
+RUN bash /fc3/scripts/install-rpm-in-vm.sh
 
 EXPOSE 6080
 EXPOSE 2222
 
-CMD ["bash", "/rhl72/scripts/run-final.sh"]
+CMD ["bash", "/fc3/scripts/run-final.sh"]
