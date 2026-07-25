@@ -1,8 +1,0 @@
-FROM rhl72-installed
-
-EXPOSE 6080
-EXPOSE 2222
-
-VOLUME ["/workspace"]
-
-CMD ["bash", "/rhl72/scripts/run-interactive.sh"]
