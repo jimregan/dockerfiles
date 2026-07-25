@@ -31,6 +31,7 @@ QEMU_PID=$!
 trap "kill $QEMU_PID 2>/dev/null || true" EXIT
 
 wait_for_ssh
+configure_guest_network
 
 scp_to_guest /rpms/*.rpm "root@${SSH_HOST}:/tmp/"
 ssh_cmd "rpm -Uvh /tmp/*.rpm"

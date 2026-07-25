@@ -7,8 +7,11 @@ SSH_PORT=${SSH_PORT:-2222}
 SSH_HOST=${SSH_HOST:-localhost}
 
 qemu_kvm_args() {
+    local cpu=${RUN_CPU:-pentium2}
     if [ "${USE_KVM:-1}" != "0" ] && [ -e /dev/kvm ]; then
-        printf '%s\n' "-enable-kvm -cpu host"
+        printf '%s\n' "-enable-kvm -cpu $cpu"
+    else
+        printf '%s\n' "-cpu $cpu"
     fi
 }
 
@@ -68,6 +71,30 @@ wait_for_ssh() {
 
     echo "Guest SSH did not become available."
     return 1
+}
+
+configure_guest_network() {
+    ssh_cmd "cat > /etc/resolv.conf <<'EOF'
+nameserver 10.0.2.3
+EOF
+
+cat > /etc/sysconfig/network <<'EOF'
+NETWORKING=yes
+HOSTNAME=localhost.localdomain
+GATEWAY=10.0.2.2
+GATEWAYDEV=eth0
+EOF"
+
+    ssh_cmd "cat > /etc/sysconfig/network-scripts/ifcfg-eth0 <<'EOF'
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+USERCTL=no
+PEERDNS=no
+TYPE=Ethernet
+EOF"
+
+    ssh_cmd "/sbin/route -n | awk '\$1 == \"0.0.0.0\" { found = 1 } END { exit found ? 0 : 1 }' || /sbin/route add default gw 10.0.2.2 eth0"
 }
 
 shutdown_guest() {

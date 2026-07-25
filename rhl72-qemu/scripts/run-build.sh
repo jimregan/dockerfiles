@@ -34,6 +34,7 @@ QEMU_PID=$!
 trap "kill $QEMU_PID 2>/dev/null" EXIT
 
 wait_for_ssh
+configure_guest_network
 
 echo "Copying build files..."
 ssh_cmd "rm -rf /root/rpmbuild && mkdir -p /root/rpmbuild"
