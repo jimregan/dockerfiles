@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -475,7 +476,12 @@ def main() -> None:
             pdf_output_dir.mkdir(parents=True, exist_ok=True)
             (pdf_output_dir / "error.json").write_text(
                 json.dumps(
-                    {"pdf": str(pdf_path.relative_to(args.input_root)), "error": str(exc), "status": "failed"},
+                    {
+                        "pdf": str(pdf_path.relative_to(args.input_root)),
+                        "error": str(exc),
+                        "traceback": traceback.format_exc(),
+                        "status": "failed",
+                    },
                     indent=2,
                 ) + "\n",
                 encoding="utf-8",
