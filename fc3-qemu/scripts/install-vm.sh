@@ -11,6 +11,7 @@ DISK=${DISK:-/disk/fc3.qcow2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-/fc3/tree}
 INSTALL_HTTP_PORT=${INSTALL_HTTP_PORT:-8000}
+INSTALL_NET_MODEL=${INSTALL_NET_MODEL:-pcnet}
 INSTALL_URL="http://10.0.2.2:${INSTALL_HTTP_PORT}"
 WORK=/tmp/fc3-install
 MNT1="$WORK/disc1"
@@ -22,7 +23,7 @@ HTTP_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260727-fc3-http-kickstart
+INSTALL_SCRIPT_REV=20260727-fc3-http-method-pcnet
 
 fail() {
     INSTALL_ERROR=$1
@@ -49,6 +50,7 @@ cleanup() {
         echo "install_tree=$TREE_DIR"
         echo "install_http=$INSTALL_URL/"
         echo "install_mem=$INSTALL_MEM"
+        echo "install_net_model=$INSTALL_NET_MODEL"
         echo "cpu_args=${CPU_FLAG:-unset}"
         echo "disk=$DISK"
         echo "=== END SUMMARY ==="
@@ -117,6 +119,8 @@ run_installer() {
 
     echo "Installer memory: ${INSTALL_MEM}M"
     echo "Installer CPU args: $CPU_FLAG"
+    echo "Installer NIC model: $INSTALL_NET_MODEL"
+    echo "Installer append args: ks=${INSTALL_URL}/ks.cfg method=${INSTALL_URL}/ ksdevice=eth0 ip=dhcp text console=tty0 console=ttyS0"
 
     qemu-img create -f qcow2 "$DISK" 8G
 
@@ -126,10 +130,10 @@ run_installer() {
         -m "$INSTALL_MEM" \
         -kernel "$KERNEL" \
         -initrd "$INITRD" \
-        -append "ks=${INSTALL_URL}/ks.cfg ksdevice=eth0 ip=dhcp text console=tty0 console=ttyS0" \
+        -append "ks=${INSTALL_URL}/ks.cfg method=${INSTALL_URL}/ ksdevice=eth0 ip=dhcp text console=tty0 console=ttyS0" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-        -device rtl8139,netdev=net0 \
+        -device "$INSTALL_NET_MODEL",netdev=net0 \
         $CPU_FLAG \
         -no-acpi \
         $DISPLAY_ARGS \

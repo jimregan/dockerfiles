@@ -7,6 +7,7 @@ INSTALL_USE_KVM=${INSTALL_USE_KVM:-0}
 INSTALL_VNC=${INSTALL_VNC:-0}
 INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
+INSTALL_NET_MODEL=${INSTALL_NET_MODEL:-pcnet}
 TREE_DIR=${TREE_DIR:-$(pwd)/tree}
 
 case "$ISO_DIR" in
@@ -67,6 +68,7 @@ CID=$(docker run -d --privileged $KVM $PORTS \
     -e INSTALL_VNC="$INSTALL_VNC" \
     -e INSTALL_CPU="$INSTALL_CPU" \
     -e INSTALL_MEM="$INSTALL_MEM" \
+    -e INSTALL_NET_MODEL="$INSTALL_NET_MODEL" \
     -e TREE_DIR=/fc3/tree \
     fc3-base \
     bash /fc3/scripts/install-vm.sh)

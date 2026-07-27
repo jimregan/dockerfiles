@@ -57,6 +57,16 @@ INSTALL_VNC=1 ISO_DIR=/path/to/fc3-isos ./build.sh
 
 FC3 discs boot via isolinux, not a boot floppy, so the installer extracts `isolinux/vmlinuz` and `isolinux/initrd.img` straight from disc 1 and boots them with QEMU's `-kernel`/`-initrd`. During install, the container serves the merged tree and `ks.cfg` over HTTP with Python's built-in server. QEMU user networking exposes the container side to the guest installer as `10.0.2.2`, so the boot command uses `ks=http://10.0.2.2:8000/ks.cfg` and the kickstart uses `url --url http://10.0.2.2:8000/`. This avoids relying on FC3 anaconda to discover a separate floppy or synthetic hard disk just to read kickstart.
 
+The installer NIC defaults to QEMU's `pcnet` model because FC3's early installer environment is more likely to carry the `pcnet32` driver. Override it if needed:
+
+```bash
+INSTALL_NET_MODEL=rtl8139 ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
+When kickstart is fetched successfully, the Docker log should show Python HTTP requests for `/ks.cfg` and then the install tree. If the console stops after early storage messages such as `No volume groups found` and there is no `GET /ks.cfg`, the installer has not brought up networking.
+
+FC3 still uses some older kickstart commands. In particular, `langsupport --default=en_US en_US` is needed to avoid the interactive Language Support screen even though newer Fedora/RHEL kickstarts fold this into `lang`.
+
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
 ```bash
