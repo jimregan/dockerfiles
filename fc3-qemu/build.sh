@@ -60,6 +60,13 @@ PORTS=""
 
 INSTALL_CONTAINER=${INSTALL_CONTAINER:-fc3-install}
 docker rm -f "$INSTALL_CONTAINER" >/dev/null 2>&1 || true
+for i in $(seq 1 30); do
+    if ! docker inspect "$INSTALL_CONTAINER" >/dev/null 2>&1; then
+        break
+    fi
+    echo "Waiting for old installer container removal (${i}/30)..."
+    sleep 1
+done
 
 CID=$(docker run -d --privileged $KVM $PORTS \
     --name "$INSTALL_CONTAINER" \

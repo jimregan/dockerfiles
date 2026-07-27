@@ -63,6 +63,12 @@ The installer NIC defaults to QEMU's `pcnet` model because FC3's early installer
 INSTALL_NET_MODEL=rtl8139 ISO_DIR=/path/to/fc3-isos ./build.sh
 ```
 
+The runtime VM scripts also default to `pcnet` so the installed system sees the same NIC model it saw during install. Override it only if you also reconfigure networking inside the guest:
+
+```bash
+RUN_NET_MODEL=rtl8139 docker compose up interactive
+```
+
 When kickstart is fetched successfully, the Docker log should show Python HTTP requests for `/ks.cfg` and then the install tree. If the console stops after early storage messages such as `No volume groups found` and there is no `GET /ks.cfg`, the installer has not brought up networking.
 
 FC3 still uses some older kickstart commands. In particular, `langsupport --default=en_US en_US` is needed to avoid the interactive Language Support screen even though newer Fedora/RHEL kickstarts fold this into `lang`.
@@ -97,7 +103,20 @@ Access:
 - noVNC: `http://localhost:6080/vnc.html`
 - SSH: `ssh -p 2222 root@localhost`
 
-Use this VM to work out the source tarball, build dependencies, spec file, and `rpmbuild` invocation. Put the resulting files in the host `./rpmbuild` tree so the automated builder can use them.
+If SSH is not up in an older installed image, log in through noVNC as root and run:
+
+```bash
+/sbin/chkconfig sshd on
+/sbin/service sshd start
+```
+
+The host `./rpmbuild` tree is mounted into the Docker container at `/rpmbuild`. The FC3 guest does not see Docker volumes directly; copy the mounted tree into the guest after it boots:
+
+```bash
+docker compose exec interactive bash /fc3/scripts/sync-rpmbuild-to-guest.sh
+```
+
+That copies `/rpmbuild` in the container to `/root/rpmbuild` in the guest. Use this VM to work out the source tarball, build dependencies, spec file, and `rpmbuild` invocation. Put the resulting files in the host `./rpmbuild` tree so the automated builder can use them.
 
 ## Image 2: RPM Builder
 
