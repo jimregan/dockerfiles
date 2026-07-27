@@ -20,7 +20,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260727-fc3-ks-on-hdb
+INSTALL_SCRIPT_REV=20260727-fc3-serial-console
 
 fail() {
     INSTALL_ERROR=$1
@@ -111,7 +111,7 @@ start_display_proxy() {
     DISPLAY_ARGS="-display none -serial stdio"
 
     if [ "${INSTALL_VNC:-0}" != "0" ]; then
-        DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial mon:stdio"
+        DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial stdio -monitor none"
         websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
         NOVNC_PID=$!
         echo "Installer noVNC enabled at http://localhost:6080/vnc.html"
@@ -133,7 +133,7 @@ run_installer() {
         -m "$INSTALL_MEM" \
         -kernel "$KERNEL" \
         -initrd "$INITRD" \
-        -append "ks=hd:hdb:/ks.cfg text" \
+        -append "ks=hd:hdb:/ks.cfg text console=tty0 console=ttyS0" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
