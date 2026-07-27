@@ -12,8 +12,7 @@ services:
       - "6080:6080"
       - "2222:2222"
     volumes:
-      - .:/workspace
-      - ./rpmbuild:/rpmbuild
+      - ./rpmbuild:/workspace/rpmbuild
 
   builder:
     build:
