@@ -15,13 +15,12 @@ WORK=/tmp/fc3-install
 MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
 INITRD="$WORK/initrd.img"
-KS_FLOPPY="$WORK/ks-floppy.img"
 TREE_IMAGE="$WORK/install-tree.img"
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260725-fc3-isolinux
+INSTALL_SCRIPT_REV=20260727-fc3-ks-on-hdb
 
 fail() {
     INSTALL_ERROR=$1
@@ -80,18 +79,6 @@ extract_installer_kernel() {
     umount "$MNT1"
 }
 
-make_ks_floppy() {
-    INSTALL_STATUS="creating-ks-floppy"
-
-    qemu-img create -f raw "$KS_FLOPPY" 1440k
-    mkfs.msdos "$KS_FLOPPY" >/dev/null
-    mcopy -o -i "$KS_FLOPPY" /fc3/kickstart.cfg ::ks.cfg
-    mcopy -o -i "$KS_FLOPPY" /fc3/kickstart.cfg ::KS.CFG
-
-    echo "Kickstart floppy root:"
-    mdir -i "$KS_FLOPPY" ::
-}
-
 make_install_tree_disk() {
     local tree_mb
     local image_mb
@@ -115,6 +102,7 @@ make_install_tree_disk() {
     qemu-img create -f raw "$TREE_IMAGE" "${image_mb}M"
     mkfs.vfat -F 32 -n FC3TREE "$TREE_IMAGE"
     mcopy -s -i "$TREE_IMAGE" "$TREE_DIR"/* ::
+    mcopy -o -i "$TREE_IMAGE" /fc3/kickstart.cfg ::ks.cfg
     echo "Install tree FAT disk root:"
     mdir -i "$TREE_IMAGE" ::
 }
@@ -145,10 +133,9 @@ run_installer() {
         -m "$INSTALL_MEM" \
         -kernel "$KERNEL" \
         -initrd "$INITRD" \
-        -append "ks=floppy text" \
+        -append "ks=hd:hdb:/ks.cfg text" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
-        -drive file="$KS_FLOPPY",format=raw,if=floppy,index=0 \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device rtl8139,netdev=net0 \
         $CPU_FLAG \
@@ -177,7 +164,6 @@ echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 require_inputs
 prepare_workspace
 extract_installer_kernel
-make_ks_floppy
 make_install_tree_disk
 start_display_proxy
 run_installer
