@@ -33,8 +33,22 @@ echo "Disk image:"
 docker exec "$CID" sh -c 'ls -lh /disk/fc3.qcow2 2>/dev/null || true; qemu-img info /disk/fc3.qcow2 2>/dev/null | sed -n "1,8p" || true' 2>/dev/null || true
 
 echo
-echo "Recent HTTP/install log lines:"
-docker logs --tail 80 "$CID" 2>&1 | grep -E 'GET |POST |Running anaconda|Formatting|Installing|Package|Complete|Traceback|Error|No volume|partition|bootloader|reboot|Install complete' || true
+echo "Recent installer log lines:"
+docker logs --tail 80 "$CID" 2>&1 | grep -E 'Running anaconda|Formatting|Installing|Package|Complete|Traceback|Error|No volume|partition|bootloader|reboot|Install complete' || true
+
+echo
+echo "HTTP package fetches:"
+docker exec "$CID" sh -c '
+    log=/tmp/fc3-install/http.log
+    if [ -f "$log" ]; then
+        printf "successful RPM GETs: "
+        grep -c "GET .*Fedora/RPMS/.* 200 " "$log" || true
+        echo "recent HTTP lines:"
+        tail -n 20 "$log"
+    else
+        echo "HTTP log unavailable."
+    fi
+' 2>/dev/null || true
 
 echo
 echo "QEMU monitor:"

@@ -17,12 +17,13 @@ if ! find "$SPEC_SRC/SPECS" -maxdepth 1 -name '*.spec' -print -quit 2>/dev/null 
 fi
 
 KVM_FLAG=$(qemu_kvm_args)
+NET_DEVICE=$(qemu_net_device_args)
 
 qemu-system-i386 \
     -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device rtl8139,netdev=net0 \
+    $NET_DEVICE \
     $KVM_FLAG \
     -no-acpi \
     -boot order=c \

@@ -18,6 +18,7 @@ MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
 INITRD="$WORK/initrd.img"
 HTTP_ROOT="$WORK/http"
+HTTP_LOG="$WORK/http.log"
 NOVNC_PID=""
 HTTP_PID=""
 LAST_QEMU_EXIT=""
@@ -97,10 +98,11 @@ start_install_http() {
 
     sed "s|@INSTALL_URL@|$INSTALL_URL|g" /fc3/kickstart.cfg > "$HTTP_ROOT/ks.cfg"
 
-    python3 -m http.server "$INSTALL_HTTP_PORT" --bind 0.0.0.0 --directory "$HTTP_ROOT" &
+    python3 -m http.server "$INSTALL_HTTP_PORT" --bind 0.0.0.0 --directory "$HTTP_ROOT" >"$HTTP_LOG" 2>&1 &
     HTTP_PID=$!
 
     echo "Install HTTP tree: $INSTALL_URL/"
+    echo "Install HTTP log: $HTTP_LOG"
 }
 
 start_display_proxy() {

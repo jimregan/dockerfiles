@@ -13,16 +13,18 @@ else
     echo "No KVM, running in software emulation (slow)."
 fi
 KVM_FLAG=$(qemu_kvm_args)
+NET_DEVICE=$(qemu_net_device_args)
 
 echo "SSH forwarded to port 2222 — connect with: ssh -p 2222 root@localhost"
 echo "noVNC available at: http://localhost:6080/vnc.html"
+echo "Runtime NIC args: $NET_DEVICE"
 
 # VNC only on loopback — noVNC/websockify is the external interface
 qemu-system-i386 \
     -m 256 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device rtl8139,netdev=net0 \
+    $NET_DEVICE \
     $KVM_FLAG \
     -no-acpi \
     -vga cirrus \

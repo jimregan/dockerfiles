@@ -24,6 +24,11 @@ qemu_install_cpu_args() {
     fi
 }
 
+qemu_net_device_args() {
+    local model=${RUN_NET_MODEL:-rtl8139}
+    printf '%s\n' "-device $model,netdev=net0"
+}
+
 ssh_cmd() {
     sshpass -p "$ROOT_PASSWORD" ssh \
         -p "$SSH_PORT" \
@@ -35,7 +40,7 @@ ssh_cmd() {
         -o ConnectTimeout=5 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
-        -o KexAlgorithms=+diffie-hellman-group1-sha1 \
+        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,+diffie-hellman-group1-sha1 \
         -o Ciphers=+aes128-cbc,3des-cbc \
         "root@$SSH_HOST" "$@"
 }
@@ -51,7 +56,7 @@ scp_to_guest() {
         -o ConnectTimeout=5 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
-        -o KexAlgorithms=+diffie-hellman-group1-sha1 \
+        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,+diffie-hellman-group1-sha1 \
         -o Ciphers=+aes128-cbc,3des-cbc \
         "$@"
 }

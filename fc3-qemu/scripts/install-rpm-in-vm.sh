@@ -14,12 +14,13 @@ if ! find /rpms -maxdepth 1 -name '*.rpm' -print -quit 2>/dev/null | grep -q .; 
 fi
 
 KVM_FLAG=$(qemu_kvm_args)
+NET_DEVICE=$(qemu_net_device_args)
 
 qemu-system-i386 \
     -m 512 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device rtl8139,netdev=net0 \
+    $NET_DEVICE \
     $KVM_FLAG \
     -no-acpi \
     -boot order=c \
@@ -34,8 +35,10 @@ wait_for_ssh
 configure_guest_network
 
 scp_to_guest /rpms/*.rpm "root@${SSH_HOST}:/tmp/"
+scp_to_guest /fc3/scripts/configure-xorg.sh "root@${SSH_HOST}:/tmp/configure-xorg.sh"
 ssh_cmd "rpm -Uvh /tmp/*.rpm"
-ssh_cmd "cat > /root/.xinitrc <<'EOF'
+ssh_cmd "bash /tmp/configure-xorg.sh
+cat > /root/.xinitrc <<'EOF'
 mozilla
 EOF
 chmod +x /root/.xinitrc

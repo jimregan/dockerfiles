@@ -10,6 +10,7 @@ DISK=/disk/fc3.qcow2
 require_bootable_disk "$DISK"
 
 KVM_FLAG=$(qemu_kvm_args)
+NET_DEVICE=$(qemu_net_device_args)
 
 echo "noVNC available at: http://localhost:6080/vnc.html"
 echo "SSH forwarded to port 2222."
@@ -18,7 +19,7 @@ qemu-system-i386 \
     -m 256 \
     -hda "$DISK" \
     -netdev user,id=net0,hostfwd=tcp::2222-:22 \
-    -device rtl8139,netdev=net0 \
+    $NET_DEVICE \
     $KVM_FLAG \
     -no-acpi \
     -vga cirrus \
