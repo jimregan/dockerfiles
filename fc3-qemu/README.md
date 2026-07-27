@@ -55,7 +55,7 @@ If the installer appears stuck, run it with noVNC enabled and open `http://serve
 INSTALL_VNC=1 ISO_DIR=/path/to/fc3-isos ./build.sh
 ```
 
-FC3 discs boot via isolinux, not a boot floppy, so the installer extracts `isolinux/vmlinuz` and `isolinux/initrd.img` straight from disc 1 and boots them with QEMU's `-kernel`/`-initrd`/`-append "ks=floppy text"`. `kickstart.cfg` is written to a small freshly-created FAT floppy image as `ks.cfg`/`KS.CFG` and attached as the floppy drive — the boot media and the kickstart source are independent, so no ISO remastering is needed. The merged install tree is copied into a temporary FAT32 disk image, attached as IDE disk `hdb`, and used via kickstart `harddrive --partition hdb --dir /`.
+FC3 discs boot via isolinux, not a boot floppy, so the installer extracts `isolinux/vmlinuz` and `isolinux/initrd.img` straight from disc 1 and boots them with QEMU's `-kernel`/`-initrd`. The merged install tree is copied into a temporary FAT32 disk image, attached as IDE disk `hdb`, and used both as the kickstart source (`ks=hd:hdb:/ks.cfg`, `kickstart.cfg` copied onto the disk root as `ks.cfg`) and the package source (`harddrive --partition hdb --dir /`). Booting the runtime kernel directly instead of via BIOS floppy meant a separate `ks=floppy` device never got read reliably — the floppy driver isn't necessarily probed on this boot path — so the kickstart now rides on the one device anaconda already has to read successfully anyway.
 
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
