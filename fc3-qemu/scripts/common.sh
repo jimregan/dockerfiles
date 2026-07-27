@@ -40,7 +40,7 @@ ssh_cmd() {
         -o ConnectTimeout=5 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
-        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,+diffie-hellman-group1-sha1 \
+        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
         -o Ciphers=+aes128-cbc,3des-cbc \
         "root@$SSH_HOST" "$@"
 }
@@ -56,7 +56,7 @@ scp_to_guest() {
         -o ConnectTimeout=5 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
-        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,+diffie-hellman-group1-sha1 \
+        -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
         -o Ciphers=+aes128-cbc,3des-cbc \
         "$@"
 }

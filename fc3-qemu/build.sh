@@ -103,11 +103,9 @@ docker rm "$CID"
 
 # Step 4: images used after the guest OS is installed
 docker build -f Dockerfile.interactive -t fc3-interactive .
-docker build -f Dockerfile.builder -t fc3-builder .
+docker build -f Dockerfile.final -t fc3-final .
 
 echo ""
 echo "Done. Next steps:"
 echo "  Develop/debug interactively: docker compose up interactive"
-echo "  Build RPM:                   docker compose --profile build run --rm builder"
-echo "  Build final image:           docker compose --profile final build final"
-echo "  Run final image:             docker compose --profile final up final"
+echo "  Run Mozilla/Tcl plugin:      docker compose --profile final up final"

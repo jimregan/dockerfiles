@@ -1,12 +1,11 @@
 # Fedora Core 3 in QEMU in Docker
 
-This repo builds a Fedora Core 3 VM image and wraps it in three Docker images:
+This repo builds a Fedora Core 3 VM image and wraps it in two Docker images:
 
-- `fc3-interactive`: boots the installed FC3 VM with noVNC and SSH so you can debug the old Tcl plugin build manually.
-- `fc3-builder`: boots a clean copy of that VM, copies in `./rpmbuild`, runs `rpmbuild`, and writes RPMs to `./output`.
-- `fc3-final`: starts from the clean installed VM, installs the RPMs from `./output`, and boots Mozilla with the Tcl plugin installed.
+- `fc3-interactive`: boots the installed FC3 VM with noVNC and SSH for manual debugging.
+- `fc3-final`: starts from the clean installed VM, installs the Tcl plugin RPM, and boots Mozilla on X.
 
-The VM disk is created once into an intermediate Docker image named `fc3-installed`. The three images above inherit that disk.
+The VM disk is created once into an intermediate Docker image named `fc3-installed`. The images above inherit that disk.
 
 ## Inputs
 
@@ -19,16 +18,6 @@ Put the Fedora Core 3 install ISOs on the host and point `ISO_DIR` at them. The 
 
 `./build.sh` creates a merged install tree at `./tree` by running `scripts/prep-tree.sh` inside the Docker image. The prep container is privileged because it loop-mounts the ISOs. Disc 1 is copied in full (it carries `isolinux/`, `images/`, and `Fedora/base`); discs 2-4 only contribute their `Fedora/RPMS`.
 
-The old Tcl plugin RPM inputs should use the normal rpmbuild layout under `./rpmbuild`:
-
-```text
-rpmbuild/
-  SOURCES/
-  SPECS/
-```
-
-At minimum, `rpmbuild/SPECS` must contain one `.spec` file before running the builder.
-
 ## Build the Installed VM
 
 To remove stale containers/images from earlier attempts:
@@ -37,7 +26,7 @@ To remove stale containers/images from earlier attempts:
 ./clean.sh
 ```
 
-This prepares the merged install tree if needed, performs the FC3 kickstart install inside QEMU, commits the resulting disk into `fc3-installed`, then builds the interactive and builder images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
+This prepares the merged install tree if needed, performs the FC3 kickstart install inside QEMU, commits the resulting disk into `fc3-installed`, then builds the interactive and final images. The installer tree defaults to `./tree`; override with `TREE_DIR=/path/to/tree` if needed.
 
 ```bash
 ISO_DIR=/path/to/fc3-isos ./build.sh
@@ -63,10 +52,10 @@ The installer NIC defaults to QEMU's `pcnet` model because FC3's early installer
 INSTALL_NET_MODEL=rtl8139 ISO_DIR=/path/to/fc3-isos ./build.sh
 ```
 
-The runtime VM scripts also default to `pcnet` so the installed system sees the same NIC model it saw during install. Override it only if you also reconfigure networking inside the guest:
+The runtime VM scripts default to `rtl8139`, which FC3 handles with the `8139too` driver. Override it only if you also reconfigure networking inside the guest:
 
 ```bash
-RUN_NET_MODEL=rtl8139 docker compose up interactive
+RUN_NET_MODEL=pcnet docker compose up interactive
 ```
 
 When kickstart is fetched successfully, the Docker log should show Python HTTP requests for `/ks.cfg` and then the install tree. If the console stops after early storage messages such as `No volume groups found` and there is no `GET /ks.cfg`, the installer has not brought up networking.
@@ -116,25 +105,11 @@ The host `./rpmbuild` tree is mounted into the Docker container at `/rpmbuild`. 
 docker compose exec interactive bash /fc3/scripts/sync-rpmbuild-to-guest.sh
 ```
 
-That copies `/rpmbuild` in the container to `/root/rpmbuild` in the guest. Use this VM to work out the source tarball, build dependencies, spec file, and `rpmbuild` invocation. Put the resulting files in the host `./rpmbuild` tree so the automated builder can use them.
+That copies `/rpmbuild` in the container to `/root/rpmbuild` in the guest. Use this VM for manual debugging or source inspection; the final image uses the published Tcl plugin RPM by default.
 
-## Image 2: RPM Builder
+## Image 2: Final Mozilla Runtime
 
-```bash
-docker compose --profile build build builder
-docker compose --profile build run --rm builder
-```
-
-The builder mounts:
-
-- `./rpmbuild` read-only at `/rpmbuild`
-- `./output` at `/output`
-
-On success, RPMs are copied to `./output`.
-
-## Image 3: Final Mozilla Runtime
-
-Build this only after the builder has produced RPMs in `./output`. If `./output` contains no RPMs, the final image build stops with an explicit error.
+The final image downloads the FC3 Tcl plugin RPM release by default. Override the release URL if needed with `TCLPLUGIN_RPM_URL`.
 
 ```bash
 docker compose --profile final build final
@@ -146,7 +121,7 @@ Access:
 - noVNC: `http://localhost:6080/vnc.html`
 - SSH: `ssh -p 2222 root@localhost`
 
-During the final image build, the RPMs are installed into the guest disk and `/root/.xinitrc` is configured to launch Mozilla. On boot, the VM starts X on QEMU's VNC display.
+During the final image build, the RPM is installed into the guest disk and `/root/.xinitrc` is configured to launch Mozilla directly under X, without a desktop session. The final container serves local `lab/` files at `http://www.speech.kth.se/labs/analysis/` for the guest, with `.tcl` served as `application/x-tcl`. On boot, the VM starts X on QEMU's VNC display and opens that URL.
 
 ## Tcl Plugin Notes
 

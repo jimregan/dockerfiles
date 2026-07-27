@@ -11,9 +11,14 @@ require_bootable_disk "$DISK"
 
 KVM_FLAG=$(qemu_kvm_args)
 NET_DEVICE=$(qemu_net_device_args)
+LAB_SERVER_PID=""
 
 echo "noVNC available at: http://localhost:6080/vnc.html"
 echo "SSH forwarded to port 2222."
+echo "Serving lab files at: http://www.speech.kth.se/labs/analysis/"
+
+python3 /fc3/scripts/lab-server.py &
+LAB_SERVER_PID=$!
 
 qemu-system-i386 \
     -m 256 \
@@ -28,7 +33,7 @@ qemu-system-i386 \
 
 QEMU_PID=$!
 
-trap "kill $QEMU_PID 2>/dev/null || true" EXIT
+trap "kill $QEMU_PID 2>/dev/null || true; kill $LAB_SERVER_PID 2>/dev/null || true" EXIT
 
 websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900
 
