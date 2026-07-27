@@ -16,11 +16,13 @@ MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
 INITRD="$WORK/initrd.img"
 TREE_IMAGE="$WORK/install-tree.img"
+TREE_PARTITION_OFFSET_SECTORS=2048
+TREE_PARTITION_OFFSET_BYTES=$((TREE_PARTITION_OFFSET_SECTORS * 512))
 NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260727-fc3-live-qemu-output
+INSTALL_SCRIPT_REV=20260727-fc3-partitioned-tree-disk
 
 fail() {
     INSTALL_ERROR=$1
@@ -100,11 +102,12 @@ make_install_tree_disk() {
     echo "Install tree FAT disk: ${image_mb}M"
 
     qemu-img create -f raw "$TREE_IMAGE" "${image_mb}M"
-    mkfs.vfat -F 32 -n FC3TREE "$TREE_IMAGE"
-    mcopy -s -i "$TREE_IMAGE" "$TREE_DIR"/* ::
-    mcopy -o -i "$TREE_IMAGE" /fc3/kickstart.cfg ::ks.cfg
+    printf ',,c,*\n' | sfdisk "$TREE_IMAGE"
+    mkfs.vfat -F 32 -n FC3TREE --offset="$TREE_PARTITION_OFFSET_SECTORS" "$TREE_IMAGE"
+    mcopy -s -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" "$TREE_DIR"/* ::
+    mcopy -o -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" /fc3/kickstart.cfg ::ks.cfg
     echo "Install tree FAT disk root:"
-    mdir -i "$TREE_IMAGE" ::
+    mdir -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" ::
 }
 
 start_display_proxy() {
@@ -132,7 +135,7 @@ run_installer() {
         -m "$INSTALL_MEM" \
         -kernel "$KERNEL" \
         -initrd "$INITRD" \
-        -append "ks=hd:hdb:/ks.cfg text console=tty0 console=ttyS0" \
+        -append "ks=hd:hdb1:/ks.cfg text console=tty0 console=ttyS0" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
         -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
