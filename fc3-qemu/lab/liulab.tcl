@@ -47,12 +47,12 @@ scrollbar .f1.f.fc.xscroll -orient horizontal -command [list $v(c1) xview]
 pack .f1.f.fc.xscroll -side bottom -fill x
 pack $v(c1) -side left
 pack .f1.f -side right
-$v(c1) create spectrogram 0 0 -sound s1 -height $v(spegh) -tags s1 -pix $v(pps1) -fftlen 256 -winlen $v(winlen1)
+$v(c1) create spectrogram 0 0 -sound s1 -height $v(spegh) -tags s1 -pixelspersecond $v(pps1) -fftlength 256 -winlength $v(winlen1)
 $v(c1) create text 10 10 -text "" -tags ctext -anchor w -fill red
 $v(c1) create text 10 20 -text "" -tags mtext -anchor w -fill red
-$v(c1) create rect  -1 -1 -1 -1 -tags m -fill black -stipple gray25
-snack_yAxis $v(y1) 0 0 20 $v(spegh) -topfrequency $v(topfr1)
-snack_tAxis $v(c1) 0 [expr $v(spegh)-$v(timeh)] 600 $v(timeh) $v(pps1) 10 -tags axis
+$v(c1) create rectangle  -1 -1 -1 -1 -tags m -fill black -stipple gray25
+snack::frequencyAxis $v(y1) 0 0 20 $v(spegh) -topfr $v(topfr1)
+snack::timeAxis $v(c1) 0 [expr $v(spegh)-$v(timeh)] 600 $v(timeh) $v(pps1) -tags axis
 bind $v(c1) <ButtonPress-1>   { B1Press   1 %x %y }
 bind $v(c1) <Motion>          { B1Motion  1 %x %y }
 bind $v(c1) <ButtonRelease-1> { B1Release 1 %x %y }
@@ -60,9 +60,9 @@ bind $v(c1) <3> { PlayMark 1 }
 
 if {$embed_args(conf) == 1} {
     pack [ set sf [frame .f3]] -fill both -expand true
-    pack [ set v(c1s) [canvas $sf.c1s -width $v(sectw) -height $v(secth) -cursor crosshair -highlightthi 1]]
+    pack [ set v(c1s) [canvas $sf.c1s -width $v(sectw) -height $v(secth) -cursor crosshair -highlightthickness 1]]
     bind $v(c1s) <Motion> { PutCrossHairs $v(c1s) %x %y }
-    $v(c1s) create section 1 1 -sound s1 -width $v(sectw) -height $v(secth) -tags s1 -frame yes -fftlen 1024 -winlen 1024
+    $v(c1s) create section 1 1 -sound s1 -width $v(sectw) -height $v(secth) -tags s1 -frame yes -fftlength 1024 -winlength 1024
     if {$tcl_platform(platform) == "windows"} {
 	$v(c1s) create line -1 0 -1 $v(sectw) -tags sm1
 	$v(c1s) create line -1 0 -1 $v(secth) -tags sm2
@@ -86,16 +86,16 @@ if {$embed_args(conf) >= 2} {
     pack $v(c2) -side left
     pack .f2.f -side right
     if {$embed_args(conf) == 2} {
-	$v(c2) create spectrogram 0 0 -sound s2 -height $v(spegh) -tags s2 -pix $v(pps2) -fftlen 256 -winlen $v(winlen2)
+	$v(c2) create spectrogram 0 0 -sound s2 -height $v(spegh) -tags s2 -pixelspersecond $v(pps2) -fftlength 256 -winlength $v(winlen2)
     } else {
-	$v(c2) create waveform 0 0 -sound s2 -height $v(spegh) -tags s2 -pix $v(pps2)
+	$v(c2) create waveform 0 0 -sound s2 -height $v(spegh) -tags s2 -pixelspersecond $v(pps2)
     }
     if {$embed_args(conf) == 2} {
-	snack_yAxis $v(y2) 0 0 20 $v(spegh) -topfrequency $v(topfr2)
+	snack::frequencyAxis $v(y2) 0 0 20 $v(spegh) -topfr $v(topfr2)
     }
     $v(c2) create text 10 10 -text "" -tags ctext -anchor w -fill red
     $v(c2) create text 10 20 -text "" -tags mtext -anchor w -fill red
-    $v(c2) create rect  -1 -1 -1 -1 -tags m -fill black -stipple gray25
+    $v(c2) create rectangle  -1 -1 -1 -1 -tags m -fill black -stipple gray25
     bind $v(c2) <ButtonPress-1>   { B1Press   2 %x %y }
     bind $v(c2) <Motion>          { B1Motion  2 %x %y }
     bind $v(c2) <ButtonRelease-1> { B1Release 2 %x %y }
@@ -106,26 +106,26 @@ pack [ frame .f] -fill x
 pack [ spectrogram .f.a -height 110 -width 400 -sound s0] -side left
 pack [ frame .f.rp] -side left
 pack [ button .f.rp.r -text Record -fg red] -side top
-bind .f.rp.r <ButtonPress-1>   {s0 record;.f.rp.r config -activeba red}
-bind .f.rp.r <ButtonRelease-1> {s0 stop;.f.rp.r config -activeba #ececec}
-pack [ button .f.rp.p -text Play -fg green4 -wi 6 -command {s0 play -out $v(out)}] -side top
+bind .f.rp.r <ButtonPress-1>   {s0 record;.f.rp.r configure -activebackground red}
+bind .f.rp.r <ButtonRelease-1> {s0 stop;.f.rp.r configure -activebackground #ececec}
+pack [ button .f.rp.p -text Play -fg green4 -width 6 -command {s0 play -output $v(out)}] -side top
 pack [ radiobutton .f.rp.oe -text "ext" -value EXTERNAL -variable v(out)]
 pack [ radiobutton .f.rp.oi -text "int" -value INTERNAL -variable v(out)]
 pack [ frame .f.f] -side left
-pack [ frame .f.f.u -highlightthi 0] -side top
+pack [ frame .f.f.u -highlightthickness 0] -side top
 pack [ frame .f.f.u.u] -side top 
 pack [ frame .f.f.u.b] -side top
 pack [ button .f.f.u.u.u -text Copy -command {Copy 1}] -side left
 pack [ button .f.f.u.u.pl -text Play -command { PlayMark 1 }] -side left
 pack [ button .f.f.u.u.pr -text Print -command { Print 1 }]   -side left
 pack [ label .f.f.u.b.l -text "analysis bw:"] -side left
-pack [ entry .f.f.u.b.e -width 4 -textvar v(anabw1)] -side left
+pack [ entry .f.f.u.b.e -width 4 -textvariable v(anabw1)] -side left
 pack [ label .f.f.u.b.l2 -text Hz] -side left
 bind .f.f.u.b.e <Key-Return> { SetAnaBW 1 }
-pack [ frame .f.f2 -highlightthi 0] -side left -fill both
+pack [ frame .f.f2 -highlightthickness 0] -side left -fill both
 pack [ frame .f.f2.u] -side top
-pack [ scale .f.f2.u.s1 -variable v(pps1) -label "zoom t" -orient horiz -from 200 -to 2000 -com {ZoomT 1} -showvalue no] -side left
-pack [ scale .f.f2.u.s2 -variable v(fzoom1) -label "zoom f" -from 0 -to 6000 -orient hori -command {ZoomF 1} -showvalue no] -side left
+pack [ scale .f.f2.u.s1 -variable v(pps1) -label "zoom t" -orient horizontal -from 200 -to 2000 -command {ZoomT 1} -showvalue no] -side left
+pack [ scale .f.f2.u.s2 -variable v(fzoom1) -label "zoom f" -from 0 -to 6000 -orient horizontal -command {ZoomF 1} -showvalue no] -side left
 
 proc B1Press {n x y} {
     global v embed_args
@@ -134,7 +134,7 @@ proc B1Press {n x y} {
     $v(c$n) coords m [$v(c$n) canvasx $x] -1 $xc $v(spegh)
     set v(start$n) [expr int(16000 * $xc / $v(pps$n))]
     if {$embed_args(conf) == 1} {
-	$v(c1s) itemconf s1 -start $v(start$n)
+	$v(c1s) itemconfigure s1 -start $v(start$n)
     }
     set v(flag) 1
 }
@@ -157,9 +157,9 @@ proc B1Motion {n x y} {
 	set v(end$n) [expr int(16000 * $xc / $v(pps$n))]
 	set t1 [format "%.4f" [expr $v(start$n) / 16000.0]]
 	set t2 [format "%.4f" [expr $v(end$n) / 16000.0]]
-	$v(c$n) itemconf mtext -text "$t1 - $t2"
+	$v(c$n) itemconfigure mtext -text "$t1 - $t2"
 	if {$embed_args(conf) == 1} {
-	    $v(c1s) itemconf s1 -end $v(end$n)
+	    $v(c1s) itemconfigure s1 -end $v(end$n)
 	}
     }
     if {$f < 0.0} { set f 0.0 }
@@ -169,9 +169,9 @@ proc B1Motion {n x y} {
     if {$t < 0.0} { set t 0.0 }
     $v(c$n) coords ctext $xt 10
     if {$n == 1 || $embed_args(conf) == 2} {
-	$v(c$n) itemconf ctext -text "frequency: $f Hz, time $t s"
+	$v(c$n) itemconfigure ctext -text "frequency: $f Hz, time $t s"
     } else {
-	$v(c$n) itemconf ctext -text "time $t s"
+	$v(c$n) itemconfigure ctext -text "time $t s"
     }
 }
 
@@ -181,7 +181,7 @@ proc B1Release {n x y} {
     set co [$v(c$n) coords m]
     if {[lindex $co 0] == [$v(c$n) canvasx $x]} {
 	$v(c$n) coords m -1 -1 -1 -1
-	$v(c$n) itemconf mtext -text ""
+	$v(c$n) itemconfigure mtext -text ""
 	set v(start$n) 0
 	set v(end$n)   -1
     }
@@ -191,15 +191,15 @@ proc B1Release {n x y} {
 proc PlayMark n {
     global v
 
-    s$n play -range $v(start$n) $v(end$n) -out $v(out)
+    s$n play -start $v(start$n) -end $v(end$n) -output $v(out)
 }
 
 proc Print n {
     global v
 
-    $v(c$n) itemconf ctext -text ""
+    $v(c$n) itemconfigure ctext -text ""
     set x [expr [lindex [$v(c$n) xview] 0] * [expr int($v(pps$n) * [s$n length -units seconds])]]
-    snack_yAxis $v(c$n) $x 0 20 $v(spegh) -topfrequency $v(topfr$n) -tags junk
+    snack::frequencyAxis $v(c$n) $x 0 20 $v(spegh) -topfr $v(topfr$n) -tags junk
     $v(c$n) postscript -file junk.ps -rotate true -x $x -pagewidth 26c -colormode mono
     exec lpr junk.ps
     $v(c$n) delete junk
@@ -210,9 +210,9 @@ proc SetAnaBW n {
 
     set v(winlen$n) [expr int(16000 / $v(anabw$n))]
     if {$v(winlen$n) >= 256} {
-	$v(c$n) itemconf s$n -win $v(winlen$n) -fftlen 1024
+	$v(c$n) itemconfigure s$n -winlength $v(winlen$n) -fftlength 1024
     } else {
-	$v(c$n) itemconf s$n -win $v(winlen$n) -fftlen 256
+	$v(c$n) itemconfigure s$n -winlength $v(winlen$n) -fftlength 256
     }
 }
 
@@ -223,12 +223,12 @@ proc Copy n {
     if {$width < 900} { set width 900 }
     $v(c$n) configure -width $width -scrollregion "0 0 $width $v(spegh)"
     $v(c$n) delete axis
-    snack_tAxis $v(c$n) 0 [expr $v(spegh)-$v(timeh)] $width $v(timeh) $v(pps$n) 10 -tags axis
+    snack::timeAxis $v(c$n) 0 [expr $v(spegh)-$v(timeh)] $width $v(timeh) $v(pps$n) -tags axis
     s$n copy s0
     set v(start$n) 0
     set v(end$n) [s$n length]
     $v(c$n) coords m -1 -1 -1 -1
-    $v(c$n) itemconf mtext -text ""
+    $v(c$n) itemconfigure mtext -text ""
 }
 
 proc PutCrossHairs {c x y} {
@@ -247,7 +247,7 @@ proc PutCrossHairs {c x y} {
     $c coords sm1 $xc 0 $xc $v(secth)
     $c coords sm2 0 $yc $v(sectw) $yc
     set db [format "%.1f" [expr -90.0 * $yc / $v(secth)]]
-    $c itemconf labsect -text "dB: $db frequency: $f"
+    $c itemconfigure labsect -text "dB: $db frequency: $f"
 }
 
 proc ZoomT {n p} {
@@ -255,11 +255,11 @@ proc ZoomT {n p} {
 
     $v(c$n) delete axis
     set v(pps$n) $p
-    $v(c$n) itemconf s$n -pixelsp $v(pps$n)
+    $v(c$n) itemconfigure s$n -pixelspersecond $v(pps$n)
     set width [expr int($v(pps$n) * [s$n length -units seconds])]
     if {$width < 900} { set width 900 }
     $v(c$n) configure -width $width -scrollregion "0 0 $width $v(spegh)"
-    snack_tAxis $v(c$n) 0 [expr $v(spegh)-$v(timeh)] $width $v(timeh) $v(pps$n) 10 -tags axis
+    snack::timeAxis $v(c$n) 0 [expr $v(spegh)-$v(timeh)] $width $v(timeh) $v(pps$n) -tags axis
 
     if {$v(end$n) != [s$n length]} {
 	set x0 [expr int($v(start$n) * $v(pps$n) / 16000.0)]
@@ -273,14 +273,13 @@ proc ZoomF {n f} {
     global v embed_args
 
     set v(topfr$n) [expr 8000 - $f]
-    $v(c$n) itemconf s$n -topfr $v(topfr$n)
+    $v(c$n) itemconfigure s$n -topfrequency $v(topfr$n)
     $v(y$n) delete all
-    snack_yAxis $v(y$n) 0 0 20 $v(spegh) -topfrequency $v(topfr$n)
+    snack::frequencyAxis $v(y$n) 0 0 20 $v(spegh) -topfr $v(topfr$n)
     if {$embed_args(conf) == 1} {
-	$v(c1s) itemconf s1 -top $v(topfr$n)
+	$v(c1s) itemconfigure s1 -top $v(topfr$n)
     }
 }
 
 update
 pack propagate . false
-
