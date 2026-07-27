@@ -20,7 +20,7 @@ NOVNC_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260727-fc3-serial-console
+INSTALL_SCRIPT_REV=20260727-fc3-live-qemu-output
 
 fail() {
     INSTALL_ERROR=$1
@@ -120,7 +120,6 @@ start_display_proxy() {
 
 run_installer() {
     CPU_FLAG=$(qemu_install_cpu_args)
-    local qemu_log="$WORK/qemu.log"
 
     echo "Installer memory: ${INSTALL_MEM}M"
     echo "Installer CPU args: $CPU_FLAG"
@@ -141,14 +140,12 @@ run_installer() {
         $CPU_FLAG \
         -no-acpi \
         $DISPLAY_ARGS \
-        -no-reboot >"$qemu_log" 2>&1
+        -no-reboot
     LAST_QEMU_EXIT=$?
     set -e
 
     if [ "$LAST_QEMU_EXIT" != "0" ]; then
         INSTALL_STATUS="qemu-exited-nonzero"
-        echo "QEMU output:"
-        cat "$qemu_log" 2>/dev/null || true
         fail "qemu exited with $LAST_QEMU_EXIT"
     fi
 }
