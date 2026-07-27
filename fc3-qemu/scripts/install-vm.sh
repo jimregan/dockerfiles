@@ -10,19 +10,19 @@ DISC1=${DISC1:-/fc3/isos/disc1.iso}
 DISK=${DISK:-/disk/fc3.qcow2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 TREE_DIR=${TREE_DIR:-/fc3/tree}
-TREE_IMAGE_MB=${TREE_IMAGE_MB:-0}
+INSTALL_HTTP_PORT=${INSTALL_HTTP_PORT:-8000}
+INSTALL_URL="http://10.0.2.2:${INSTALL_HTTP_PORT}"
 WORK=/tmp/fc3-install
 MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
 INITRD="$WORK/initrd.img"
-TREE_IMAGE="$WORK/install-tree.img"
-TREE_PARTITION_OFFSET_SECTORS=2048
-TREE_PARTITION_OFFSET_BYTES=$((TREE_PARTITION_OFFSET_SECTORS * 512))
+HTTP_ROOT="$WORK/http"
 NOVNC_PID=""
+HTTP_PID=""
 LAST_QEMU_EXIT=""
 INSTALL_STATUS="not-started"
 INSTALL_ERROR=""
-INSTALL_SCRIPT_REV=20260727-fc3-partitioned-tree-disk
+INSTALL_SCRIPT_REV=20260727-fc3-http-kickstart
 
 fail() {
     INSTALL_ERROR=$1
@@ -34,6 +34,7 @@ cleanup() {
     local exit_code=$?
 
     [ -n "$NOVNC_PID" ] && kill "$NOVNC_PID" 2>/dev/null || true
+    [ -n "$HTTP_PID" ] && kill "$HTTP_PID" 2>/dev/null || true
     umount "$MNT1" 2>/dev/null || true
     rm -rf "$WORK" 2>/dev/null || true
 
@@ -46,7 +47,7 @@ cleanup() {
         echo "error=${INSTALL_ERROR:-unset}"
         echo "qemu_exit=${LAST_QEMU_EXIT:-unknown}"
         echo "install_tree=$TREE_DIR"
-        echo "install_tree_image=$TREE_IMAGE"
+        echo "install_http=$INSTALL_URL/"
         echo "install_mem=$INSTALL_MEM"
         echo "cpu_args=${CPU_FLAG:-unset}"
         echo "disk=$DISK"
@@ -65,7 +66,7 @@ require_inputs() {
 
 prepare_workspace() {
     rm -rf "$WORK"
-    mkdir -p "$MNT1"
+    mkdir -p "$MNT1" "$HTTP_ROOT"
 }
 
 extract_installer_kernel() {
@@ -81,33 +82,23 @@ extract_installer_kernel() {
     umount "$MNT1"
 }
 
-make_install_tree_disk() {
-    local tree_mb
-    local image_mb
+start_install_http() {
+    local entry
 
-    INSTALL_STATUS="creating-install-tree-disk"
+    INSTALL_STATUS="starting-install-http"
 
-    tree_mb=$(du -sm "$TREE_DIR" | awk '{print $1}')
-    if [ "$TREE_IMAGE_MB" -gt 0 ]; then
-        image_mb=$TREE_IMAGE_MB
-    else
-        image_mb=$((tree_mb + 256))
-    fi
+    shopt -s dotglob nullglob
+    for entry in "$TREE_DIR"/*; do
+        ln -s "$entry" "$HTTP_ROOT"/
+    done
+    shopt -u dotglob nullglob
 
-    if [ "$image_mb" -lt 1024 ]; then
-        image_mb=1024
-    fi
+    sed "s|@INSTALL_URL@|$INSTALL_URL|g" /fc3/kickstart.cfg > "$HTTP_ROOT/ks.cfg"
 
-    echo "Install tree size: ${tree_mb}M"
-    echo "Install tree FAT disk: ${image_mb}M"
+    python3 -m http.server "$INSTALL_HTTP_PORT" --bind 0.0.0.0 --directory "$HTTP_ROOT" &
+    HTTP_PID=$!
 
-    qemu-img create -f raw "$TREE_IMAGE" "${image_mb}M"
-    printf ',,c,*\n' | sfdisk "$TREE_IMAGE"
-    mkfs.vfat -F 32 -n FC3TREE --offset="$TREE_PARTITION_OFFSET_SECTORS" "$TREE_IMAGE"
-    mcopy -s -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" "$TREE_DIR"/* ::
-    mcopy -o -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" /fc3/kickstart.cfg ::ks.cfg
-    echo "Install tree FAT disk root:"
-    mdir -i "$TREE_IMAGE@@$TREE_PARTITION_OFFSET_BYTES" ::
+    echo "Install HTTP tree: $INSTALL_URL/"
 }
 
 start_display_proxy() {
@@ -135,9 +126,8 @@ run_installer() {
         -m "$INSTALL_MEM" \
         -kernel "$KERNEL" \
         -initrd "$INITRD" \
-        -append "ks=hd:hdb1:/ks.cfg text console=tty0 console=ttyS0" \
+        -append "ks=${INSTALL_URL}/ks.cfg ksdevice=eth0 ip=dhcp text console=tty0 console=ttyS0" \
         -drive file="$DISK",format=qcow2,if=ide,index=0,media=disk \
-        -drive file="$TREE_IMAGE",format=raw,if=ide,index=1,media=disk \
         -netdev user,id=net0,hostfwd=tcp::2222-:22 \
         -device rtl8139,netdev=net0 \
         $CPU_FLAG \
@@ -164,7 +154,7 @@ echo "install-vm.sh revision: $INSTALL_SCRIPT_REV"
 require_inputs
 prepare_workspace
 extract_installer_kernel
-make_install_tree_disk
+start_install_http
 start_display_proxy
 run_installer
 validate_install
