@@ -104,10 +104,10 @@ start_install_http() {
 }
 
 start_display_proxy() {
-    DISPLAY_ARGS="-display none -serial stdio"
+    DISPLAY_ARGS="-display none -serial stdio -monitor unix:/tmp/qemu-monitor.sock,server,nowait"
 
     if [ "${INSTALL_VNC:-0}" != "0" ]; then
-        DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial stdio -monitor none"
+        DISPLAY_ARGS="-vnc 127.0.0.1:0 -serial stdio -monitor unix:/tmp/qemu-monitor.sock,server,nowait"
         websockify --web /usr/share/novnc/ 6080 127.0.0.1:5900 &
         NOVNC_PID=$!
         echo "Installer noVNC enabled at http://localhost:6080/vnc.html"

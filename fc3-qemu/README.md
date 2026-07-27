@@ -67,6 +67,19 @@ When kickstart is fetched successfully, the Docker log should show Python HTTP r
 
 FC3 still uses some older kickstart commands. In particular, `langsupport --default=en_US en_US` is needed to avoid the interactive Language Support screen even though newer Fedora/RHEL kickstarts fold this into `lang`.
 
+While the installer is running, check whether it is still doing useful work from another shell:
+
+```bash
+./scripts/install-status.sh
+```
+
+The installer container defaults to `fc3-install`. To use a different name:
+
+```bash
+INSTALL_CONTAINER=my-fc3-install ISO_DIR=fc3 ./build.sh
+INSTALL_CONTAINER=my-fc3-install ./scripts/install-status.sh
+```
+
 The guest root password defaults to `rootpassword`. To change it for the automation and the kickstart, update `kickstart.cfg` and run with:
 
 ```bash

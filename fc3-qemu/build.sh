@@ -58,7 +58,12 @@ KVM=""
 PORTS=""
 [ "$INSTALL_VNC" != "0" ] && PORTS="-p 6080:6080"
 
+INSTALL_CONTAINER=${INSTALL_CONTAINER:-fc3-install}
+docker rm -f "$INSTALL_CONTAINER" >/dev/null 2>&1 || true
+
 CID=$(docker run -d --privileged $KVM $PORTS \
+    --name "$INSTALL_CONTAINER" \
+    --label fc3-qemu.role=installer \
     $DOCKER_DNS_ARGS \
     -v "$ISO_DIR_ABS":/fc3/isos:ro \
     -v "$TREE_DIR_ABS":/fc3/tree:ro \
@@ -72,6 +77,9 @@ CID=$(docker run -d --privileged $KVM $PORTS \
     -e TREE_DIR=/fc3/tree \
     fc3-base \
     bash /fc3/scripts/install-vm.sh)
+
+echo "Installer container: $CID"
+echo "Status check: ./scripts/install-status.sh"
 
 docker logs -f "$CID"
 EXIT=$(docker wait "$CID")

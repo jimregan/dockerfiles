@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     qemu-system-i386 \
     qemu-utils \
     qemu-system-common \
+    netcat-openbsd \
     python3 \
     rsync \
     openssh-client \
