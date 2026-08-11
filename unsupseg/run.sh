@@ -1,4 +1,5 @@
   docker run --rm --gpus all \
+    --ipc=host \
     -v /home/joregan/waxholm-unsupseg:/data/waxholm-unsupseg:ro \
     -v /home/joregan/unsupseg-output:/output \
     jimregan/unsupseg \
