@@ -1,0 +1,4 @@
+chromadb
+ollama
+tiktoken
+tqdm
