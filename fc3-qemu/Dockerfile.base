@@ -8,6 +8,7 @@ RUN echo 'icecast2 icecast2/icecast-setup boolean false' | debconf-set-selection
     qemu-utils \
     qemu-system-common \
     netcat-openbsd \
+    curl \
     python3 \
     rsync \
     openssh-client \

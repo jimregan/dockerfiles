@@ -9,6 +9,8 @@ INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 INSTALL_NET_MODEL=${INSTALL_NET_MODEL:-pcnet}
 TREE_DIR=${TREE_DIR:-$(pwd)/tree}
+TCLPLUGIN_RPM_URL=${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
+SNACK_RPM_URL=${SNACK_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm}
 
 case "$ISO_DIR" in
     /*) ISO_DIR_ABS=$ISO_DIR ;;
@@ -88,6 +90,8 @@ else
         -e INSTALL_MEM="$INSTALL_MEM" \
         -e INSTALL_NET_MODEL="$INSTALL_NET_MODEL" \
         -e TREE_DIR=/fc3/tree \
+        -e TCLPLUGIN_RPM_URL="$TCLPLUGIN_RPM_URL" \
+        -e SNACK_RPM_URL="$SNACK_RPM_URL" \
         fc3-base \
         bash /fc3/scripts/install-vm.sh)
 

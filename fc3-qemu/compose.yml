@@ -4,9 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.interactive
-      args:
-        TCLPLUGIN_RPM_URL: ${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
-        SNACK_RPM_URL: ${SNACK_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm}
     image: fc3-interactive
     privileged: true
     devices:
@@ -24,9 +21,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.final
-      args:
-        TCLPLUGIN_RPM_URL: ${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
-        SNACK_RPM_URL: ${SNACK_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm}
     image: fc3-final
     privileged: true
     devices:
