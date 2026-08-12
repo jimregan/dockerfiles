@@ -35,7 +35,13 @@ wait_for_ssh
 configure_guest_network
 
 scp_to_guest /rpms/*.rpm "root@${SSH_HOST}:/tmp/"
-ssh_cmd "rpm -Uvh /tmp/*.rpm"
+
+# Install one at a time rather than `rpm -Uvh /tmp/*.rpm` as a single
+# transaction — combining unrelated RPMs into one transaction has triggered
+# spurious dependency failures against already-installed packages on FC3's
+# old rpm.
+ssh_cmd 'set -e; for f in /tmp/*.rpm; do echo "Installing $f"; rpm -Uvh "$f"; done'
+
 shutdown_guest
 wait_for_qemu_exit $QEMU_PID
 
