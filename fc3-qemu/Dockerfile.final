@@ -1,0 +1,15 @@
+FROM fc3-installed
+ARG TCLPLUGIN_RPM_URL=https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm
+
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh
+
+COPY lab/ /www/labs/analysis/
+COPY output/ /rpms/
+ADD ${TCLPLUGIN_RPM_URL} /rpms/tclplugin-3.1-1.i386.rpm
+RUN bash /fc3/scripts/install-rpm-in-vm.sh
+
+EXPOSE 6080
+EXPOSE 2222
+
+CMD ["bash", "/fc3/scripts/run-final.sh"]

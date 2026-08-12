@@ -1,0 +1,33 @@
+services:
+
+  interactive:
+    build:
+      context: .
+      dockerfile: Dockerfile.interactive
+    image: fc3-interactive
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+      - "2222:2222"
+    volumes:
+      - .:/workspace
+      - ./rpmbuild:/rpmbuild
+
+
+  final:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
+      args:
+        TCLPLUGIN_RPM_URL: ${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
+    image: fc3-final
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+      - "2222:2222"
+    profiles:
+      - final

@@ -1,0 +1,23 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    qemu-system-i386 \
+    qemu-utils \
+    qemu-system-common \
+    netcat-openbsd \
+    python3 \
+    rsync \
+    openssh-client \
+    sshpass \
+    novnc \
+    websockify \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /disk
+
+WORKDIR /fc3
+
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh
