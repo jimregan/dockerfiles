@@ -37,6 +37,6 @@ configure_guest_network
 scp_to_guest /rpms/*.rpm "root@${SSH_HOST}:/tmp/"
 ssh_cmd "rpm -Uvh /tmp/*.rpm"
 shutdown_guest
-wait $QEMU_PID || true
+wait_for_qemu_exit $QEMU_PID
 
 echo "RPM installed into disk image."

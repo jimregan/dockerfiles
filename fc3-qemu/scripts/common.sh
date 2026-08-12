@@ -65,6 +65,8 @@ ssh_cmd() {
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o ConnectTimeout=5 \
+        -o ServerAliveInterval=5 \
+        -o ServerAliveCountMax=3 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
         -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
@@ -81,6 +83,8 @@ scp_to_guest() {
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o ConnectTimeout=5 \
+        -o ServerAliveInterval=5 \
+        -o ServerAliveCountMax=3 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
         -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
@@ -131,6 +135,22 @@ EOF"
 
 shutdown_guest() {
     ssh_cmd "shutdown -h now" || true
+}
+
+# A dead guest network (e.g. Slirp packet loss) leaves ssh_cmd's ServerAlive
+# keepalive to fail the shutdown command, but QEMU itself never receives the
+# shutdown and keeps running — so bound how long we wait for it to exit
+# before giving up and killing it, rather than hanging indefinitely.
+wait_for_qemu_exit() {
+    local qemu_pid=${1:?qemu pid required}
+    local timeout_seconds=${2:-60}
+
+    if timeout "$timeout_seconds" tail --pid="$qemu_pid" -f /dev/null 2>/dev/null; then
+        return 0
+    fi
+
+    echo "QEMU (pid $qemu_pid) did not exit within ${timeout_seconds}s of shutdown; killing it."
+    kill -9 "$qemu_pid" 2>/dev/null || true
 }
 
 require_bootable_disk() {
