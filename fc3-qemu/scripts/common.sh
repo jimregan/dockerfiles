@@ -29,6 +29,33 @@ qemu_net_device_args() {
     printf '%s\n' "-device $model,netdev=net0"
 }
 
+AUDIO_FIFO=${AUDIO_FIFO:-/tmp/fc3-audio.fifo}
+ICECAST_PORT=${ICECAST_PORT:-8000}
+ICECAST_MOUNT=${ICECAST_MOUNT:-fc3.mp3}
+
+qemu_sound_device_args() {
+    printf '%s\n' "-device ES1370,audiodev=snd0 -audiodev wav,id=snd0,path=$AUDIO_FIFO"
+}
+
+# Guest audio has no VNC channel to ride out on, so it's captured from QEMU's
+# wav audiodev (writing to $AUDIO_FIFO) and re-encoded live to an Icecast
+# mount noVNC's page can play from (see scripts/novnc/fc3-audio-button.js).
+# Call before starting QEMU: ffmpeg has to be waiting on the FIFO's read end
+# before QEMU opens it for writing, or both sides block on open().
+start_audio_stream() {
+    rm -f "$AUDIO_FIFO"
+    mkfifo "$AUDIO_FIFO"
+
+    icecast2 -c /etc/icecast2/icecast.xml -b
+    sleep 1
+
+    ffmpeg -f wav -ignore_length 1 -i "$AUDIO_FIFO" \
+        -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
+        -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}" \
+        >/tmp/fc3-audio-stream.log 2>&1 &
+    AUDIO_STREAM_PID=$!
+}
+
 ssh_cmd() {
     sshpass -p "$ROOT_PASSWORD" ssh \
         -p "$SSH_PORT" \

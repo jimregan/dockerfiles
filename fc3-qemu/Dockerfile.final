@@ -1,5 +1,6 @@
 FROM fc3-installed
 ARG TCLPLUGIN_RPM_URL=https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm
+ARG SNACK_RPM_URL=https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm
 
 COPY scripts/ /fc3/scripts/
 RUN chmod +x /fc3/scripts/*.sh
@@ -7,6 +8,7 @@ RUN chmod +x /fc3/scripts/*.sh
 COPY lab/ /www/labs/analysis/
 COPY output/ /rpms/
 ADD ${TCLPLUGIN_RPM_URL} /rpms/tclplugin-3.1-1.i386.rpm
+ADD ${SNACK_RPM_URL} /rpms/snack-2.2.10-1.i386.rpm
 RUN bash /fc3/scripts/install-rpm-in-vm.sh
 
 EXPOSE 6080

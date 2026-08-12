@@ -2,7 +2,8 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN echo 'icecast2 icecast2/icecast-setup boolean false' | debconf-set-selections && \
+    apt-get update && apt-get install -y \
     qemu-system-i386 \
     qemu-utils \
     qemu-system-common \
@@ -13,7 +14,13 @@ RUN apt-get update && apt-get install -y \
     sshpass \
     novnc \
     websockify \
+    ffmpeg \
+    icecast2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Icecast refuses to run as root; drop to the system user/group the package
+# already created instead of shipping a whole custom icecast.xml.
+RUN sed -i 's#<chroot>0</chroot>#<chroot>0</chroot>\n        <changeowner>\n            <user>icecast2</user>\n            <group>icecast</group>\n        </changeowner>#' /etc/icecast2/icecast.xml
 
 RUN mkdir -p /disk
 
@@ -21,3 +28,7 @@ WORKDIR /fc3
 
 COPY scripts/ /fc3/scripts/
 RUN chmod +x /fc3/scripts/*.sh
+
+# noVNC audio button: vendored, no CDN calls except the Icecast stream itself.
+COPY scripts/novnc/fc3-audio-button.js /usr/share/novnc/fc3-audio-button.js
+RUN sed -i 's#</head>#    <script src="fc3-audio-button.js" defer></script>\n</head>#' /usr/share/novnc/vnc.html
