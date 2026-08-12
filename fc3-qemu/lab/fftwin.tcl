@@ -2,6 +2,7 @@
 # the next line restarts using wish \
 exec wish "$0" "$@"
 
+catch { policy trusted }
 package require snack
 set db 0
 
