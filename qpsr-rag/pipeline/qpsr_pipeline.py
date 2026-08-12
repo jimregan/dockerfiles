@@ -3,7 +3,7 @@ title: STL-QPSR Expert
 author: qpsr-rag
 version: 0.1
 description: RAG over the Dept. for Speech, Music and Hearing's STL-QPSR quarterly reports.
-requirements: chromadb, ollama
+requirements: chromadb==1.5.9, ollama
 """
 
 from __future__ import annotations
