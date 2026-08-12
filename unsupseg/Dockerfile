@@ -21,3 +21,5 @@ RUN sed -i \
     -e '/wandb\.log(metrics)/d' \
     /workspace/UnsupSeg/solver.py \
     /workspace/UnsupSeg/utils.py
+
+RUN sed -i '/^import torch$/a torch.backends.cudnn.enabled = False' /workspace/UnsupSeg/main.py
