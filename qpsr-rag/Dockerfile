@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ingest.py query.py /app/
 
-ENV OLLAMA_HOST=http://ollama:11434
+ENV OLLAMA_HOST=http://localhost:11434
 ENV EMBED_MODEL=nomic-embed-text
 ENV GEN_MODEL=gemma4:26b
 ENV CHROMA_DIR=/data/chroma_db

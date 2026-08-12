@@ -6,26 +6,27 @@ serving in Docker — set `OLLAMA_HOST` if it isn't on `localhost:11434`.
 
 ## Setup (on the server, where Ollama's Docker container is)
 
+Start the Ollama container first if it isn't already running — `entrypoint.sh`
+just polls `OLLAMA_HOST` until it answers, so it'll hang forever against a
+stopped container rather than erroring out.
+
 ```bash
-# against the running Ollama container's exposed port:
+# once Ollama is up, against its published port:
 ollama pull nomic-embed-text   # embedding model
 ollama pull gemma4:26b         # generation model (already pulled for OCR)
 
 docker build -t qpsr-rag .
 ```
 
-`OLLAMA_HOST` must resolve to your existing Ollama container. If it's on a
-Docker network, join that network and use the container's name
-(`--network <network> -e OLLAMA_HOST=http://<ollama-container-name>:11434`);
-otherwise use the host's published port
-(`-e OLLAMA_HOST=http://host.docker.internal:11434` or the host's LAN IP).
+Since Ollama publishes 11434 to the host, run qpsr-rag with `--network host`
+so `localhost:11434` (the Dockerfile's default `OLLAMA_HOST`) reaches it
+directly — no need to look up container names or IPs.
 
 ## Ingest
 
 ```bash
 docker run --rm \
-  --network <ollama-network> \
-  -e OLLAMA_HOST=http://<ollama-container-name>:11434 \
+  --network host \
   -v /path/to/output:/markdown:ro \
   -v qpsr-chroma-data:/data \
   qpsr-rag
@@ -56,8 +57,7 @@ sync.
 
 ```bash
 docker run --rm -it \
-  --network <ollama-network> \
-  -e OLLAMA_HOST=http://<ollama-container-name>:11434 \
+  --network host \
   -v qpsr-chroma-data:/data \
   qpsr-rag python3 query.py --persist-dir /data/chroma_db
 ```
