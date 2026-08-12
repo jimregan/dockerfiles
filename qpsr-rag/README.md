@@ -28,7 +28,7 @@ directly — no need to look up container names or IPs.
 docker run --rm \
   --network host \
   -v /path/to/output:/markdown:ro \
-  -v qpsr-chroma-data:/data \
+  -v chroma:/data \
   qpsr-rag
 ```
 
@@ -58,7 +58,7 @@ sync.
 ```bash
 docker run --rm -it \
   --network host \
-  -v qpsr-chroma-data:/data \
+  -v chroma:/data \
   qpsr-rag python3 query.py --persist-dir /data/chroma_db
 ```
 
@@ -74,7 +74,7 @@ in the top-k retrieved excerpts (`--top-k`, default 6) and followed by a
 `pipeline/qpsr_pipeline.py` is a custom [Pipelines](https://github.com/open-webui/pipelines)
 pipe that runs the same retrieval + citation logic as `query.py`, exposed as
 a selectable "model" in Open WebUI's chat UI. It reads the same
-`qpsr-chroma-data` volume the ingest step wrote to, so no re-indexing is
+`chroma` volume the ingest step wrote to, so no re-indexing is
 needed.
 
 Start the Pipelines service, mounting the pipeline file and the Chroma data:
@@ -84,9 +84,8 @@ docker run -d \
   --name pipelines \
   --restart unless-stopped \
   --network host \
-  -e PIPELINES_API_KEY=<pick-a-key> \
   -v /path/to/qpsr-rag/pipeline:/app/pipelines \
-  -v qpsr-chroma-data:/data \
+  -v chroma:/data \
   ghcr.io/open-webui/pipelines:main
 ```
 
@@ -105,8 +104,11 @@ docker run -d \
 ```
 
 Then in Open WebUI: **Admin Settings → Connections → OpenAI API** — add a
-connection with Base URL `http://localhost:9099` and the API key you set
-above. "STL-QPSR Expert" then appears as a selectable model in the chat UI.
+connection with Base URL `http://localhost:9099` and API key `0p3n-w3bu!`
+(the Pipelines image's default — fine for a single-user server; set
+`PIPELINES_API_KEY` on the container and use a matching key here if you
+ever want to change it). "STL-QPSR Expert" then appears as a selectable
+model in the chat UI.
 
 ## Config
 
