@@ -69,6 +69,45 @@ Omit the question to start an interactive session. Each answer is grounded
 in the top-k retrieved excerpts (`--top-k`, default 6) and followed by a
 `Sources:` list with the article citation for each.
 
+## Chat interface (Open WebUI + Pipelines)
+
+`pipeline/qpsr_pipeline.py` is a custom [Pipelines](https://github.com/open-webui/pipelines)
+pipe that runs the same retrieval + citation logic as `query.py`, exposed as
+a selectable "model" in Open WebUI's chat UI. It reads the same
+`qpsr-chroma-data` volume the ingest step wrote to, so no re-indexing is
+needed.
+
+Start the Pipelines service, mounting the pipeline file and the Chroma data:
+
+```bash
+docker run -d \
+  --name pipelines \
+  --restart unless-stopped \
+  --network host \
+  -e PIPELINES_API_KEY=<pick-a-key> \
+  -v /path/to/qpsr-rag/pipeline:/app/pipelines \
+  -v qpsr-chroma-data:/data \
+  ghcr.io/open-webui/pipelines:main
+```
+
+It installs `chromadb`/`ollama` itself on startup (declared in the
+pipeline file's `requirements` header) and listens on port 9099.
+
+Start Open WebUI:
+
+```bash
+docker run -d \
+  --name open-webui \
+  --restart unless-stopped \
+  --network host \
+  -v open-webui-data:/app/backend/data \
+  ghcr.io/open-webui/open-webui:main
+```
+
+Then in Open WebUI: **Admin Settings → Connections → OpenAI API** — add a
+connection with Base URL `http://localhost:9099` and the API key you set
+above. "STL-QPSR Expert" then appears as a selectable model in the chat UI.
+
 ## Config
 
 All of `--persist-dir`, `--collection`, `--ollama-host`, `--embed-model`,
