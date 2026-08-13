@@ -89,7 +89,9 @@ if {$embed_args(conf) >= 2} {
 }
 
 pack [ frame .f] -fill x
-pack [ spectrogram .f.a -height 110 -width 400 -sound s0] -side left
+set overview [canvas .f.a -height 110 -width 400 -highlightthickness 0]
+$overview create spectrogram 0 0 -anchor nw -sound s0 -height 110 -width 400
+pack $overview -side left
 pack [ frame .f.rp] -side left
 pack [ button .f.rp.r -text Record -fg red] -side top
 bind .f.rp.r <ButtonPress-1>   {s0 record -input $v(in);.f.rp.r configure -activebackground red}
