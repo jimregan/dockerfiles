@@ -97,7 +97,8 @@ fetch_extra_rpms() {
     curl -fsSL -o "$HTTP_ROOT/extra-rpms/snack.rpm" "$SNACK_RPM_URL" \
         || fail "Failed to fetch SNACK_RPM_URL=$SNACK_RPM_URL"
     for rpm in tclplugin snack; do
-        rpm2cpio "$HTTP_ROOT/extra-rpms/$rpm.rpm" >/dev/null 2>&1 \
+        magic=$(head -c4 "$HTTP_ROOT/extra-rpms/$rpm.rpm" | od -An -tx1 | tr -d ' \n')
+        [ "$magic" = "edabeedb" ] \
             || fail "$HTTP_ROOT/extra-rpms/$rpm.rpm is not a valid RPM"
     done
 }
