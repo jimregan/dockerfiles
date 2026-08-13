@@ -42,6 +42,14 @@ qemu_sound_device_args() {
 # mount noVNC's page can play from (see scripts/novnc/fc3-audio-button.js).
 # Call before starting QEMU: ffmpeg has to be waiting on the FIFO's read end
 # before QEMU opens it for writing, or both sides block on open().
+#
+# QEMU's wav audiodev writes a self-contained WAV file per playback burst,
+# closing and reopening the FIFO's write end between bursts (e.g. separate
+# guest aplay invocations) rather than holding it open for the VM's whole
+# life. A single ffmpeg only ever opens the FIFO once, so it sees EOF and
+# exits for good the moment the first burst ends -- silently killing the
+# Icecast mount for the rest of the session. Loop it so every new burst
+# gets a fresh ffmpeg reconnecting to Icecast.
 start_audio_stream() {
     rm -f "$AUDIO_FIFO"
     mkfifo "$AUDIO_FIFO"
@@ -49,10 +57,11 @@ start_audio_stream() {
     icecast2 -c /etc/icecast2/icecast.xml -b
     sleep 1
 
-    ffmpeg -f wav -ignore_length 1 -i "$AUDIO_FIFO" \
-        -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
-        -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}" \
-        >/tmp/fc3-audio-stream.log 2>&1 &
+    ( while true; do
+          ffmpeg -f wav -ignore_length 1 -i "$AUDIO_FIFO" \
+              -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
+              -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}"
+      done ) >/tmp/fc3-audio-stream.log 2>&1 &
     AUDIO_STREAM_PID=$!
 }
 
