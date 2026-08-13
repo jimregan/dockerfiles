@@ -91,9 +91,15 @@ fetch_extra_rpms() {
     INSTALL_STATUS="fetching-extra-rpms"
     mkdir -p "$HTTP_ROOT/extra-rpms"
     echo "Fetching $TCLPLUGIN_RPM_URL"
-    curl -sL -o "$HTTP_ROOT/extra-rpms/tclplugin.rpm" "$TCLPLUGIN_RPM_URL"
+    curl -fsSL -o "$HTTP_ROOT/extra-rpms/tclplugin.rpm" "$TCLPLUGIN_RPM_URL" \
+        || fail "Failed to fetch TCLPLUGIN_RPM_URL=$TCLPLUGIN_RPM_URL"
     echo "Fetching $SNACK_RPM_URL"
-    curl -sL -o "$HTTP_ROOT/extra-rpms/snack.rpm" "$SNACK_RPM_URL"
+    curl -fsSL -o "$HTTP_ROOT/extra-rpms/snack.rpm" "$SNACK_RPM_URL" \
+        || fail "Failed to fetch SNACK_RPM_URL=$SNACK_RPM_URL"
+    for rpm in tclplugin snack; do
+        rpm2cpio "$HTTP_ROOT/extra-rpms/$rpm.rpm" >/dev/null 2>&1 \
+            || fail "$HTTP_ROOT/extra-rpms/$rpm.rpm is not a valid RPM"
+    done
 }
 
 start_install_http() {
