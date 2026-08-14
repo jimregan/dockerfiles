@@ -9,6 +9,8 @@ INSTALL_CPU=${INSTALL_CPU:-pentium2}
 INSTALL_MEM=${INSTALL_MEM:-256}
 INSTALL_NET_MODEL=${INSTALL_NET_MODEL:-pcnet}
 TREE_DIR=${TREE_DIR:-$(pwd)/tree}
+TCLPLUGIN_RPM_URL=${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
+SNACK_RPM_URL=${SNACK_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm}
 
 case "$ISO_DIR" in
     /*) ISO_DIR_ABS=$ISO_DIR ;;
@@ -51,55 +53,64 @@ if [ ! -d "$TREE_DIR_ABS/Fedora" ]; then
             "/fc3/tree-parent/$TREE_BASE"
 fi
 
-# Step 3: run the Fedora Core 3 installer, commit disk into fc3-installed
-echo "Running Fedora Core 3 installer (no KVM = slow)..."
-KVM=""
-[ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
-PORTS=""
-[ "$INSTALL_VNC" != "0" ] && PORTS="-p 6080:6080"
+# Step 3: run the Fedora Core 3 installer, commit disk into fc3-installed.
+# This is the slow (~hours) step, so skip it if fc3-installed already exists.
+# Force a redo with ./clean.sh (or `docker rmi fc3-installed`) first.
+if docker image inspect fc3-installed >/dev/null 2>&1; then
+    echo "fc3-installed already exists, skipping the kickstart install."
+    echo "To force a fresh install: ./clean.sh (or docker rmi fc3-installed)"
+else
+    echo "Running Fedora Core 3 installer (no KVM = slow)..."
+    KVM=""
+    [ -e /dev/kvm ] && KVM="--device /dev/kvm:/dev/kvm"
+    PORTS=""
+    [ "$INSTALL_VNC" != "0" ] && PORTS="-p 6080:6080"
 
-INSTALL_CONTAINER=${INSTALL_CONTAINER:-fc3-install}
-docker rm -f "$INSTALL_CONTAINER" >/dev/null 2>&1 || true
-for i in $(seq 1 30); do
-    if ! docker inspect "$INSTALL_CONTAINER" >/dev/null 2>&1; then
-        break
+    INSTALL_CONTAINER=${INSTALL_CONTAINER:-fc3-install}
+    docker rm -f "$INSTALL_CONTAINER" >/dev/null 2>&1 || true
+    for i in $(seq 1 30); do
+        if ! docker inspect "$INSTALL_CONTAINER" >/dev/null 2>&1; then
+            break
+        fi
+        echo "Waiting for old installer container removal (${i}/30)..."
+        sleep 1
+    done
+
+    CID=$(docker run -d --privileged $KVM $PORTS \
+        --name "$INSTALL_CONTAINER" \
+        --label fc3-qemu.role=installer \
+        $DOCKER_DNS_ARGS \
+        -v "$ISO_DIR_ABS":/fc3/isos:ro \
+        -v "$TREE_DIR_ABS":/fc3/tree:ro \
+        -v "$(pwd)/kickstart.cfg":/fc3/kickstart.cfg:ro \
+        -e ROOT_PASSWORD="$ROOT_PASSWORD" \
+        -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
+        -e INSTALL_VNC="$INSTALL_VNC" \
+        -e INSTALL_CPU="$INSTALL_CPU" \
+        -e INSTALL_MEM="$INSTALL_MEM" \
+        -e INSTALL_NET_MODEL="$INSTALL_NET_MODEL" \
+        -e TREE_DIR=/fc3/tree \
+        -e TCLPLUGIN_RPM_URL="$TCLPLUGIN_RPM_URL" \
+        -e SNACK_RPM_URL="$SNACK_RPM_URL" \
+        fc3-base \
+        bash /fc3/scripts/install-vm.sh)
+
+    echo "Installer container: $CID"
+    echo "Status check: ./scripts/install-status.sh"
+
+    docker logs -f "$CID"
+    EXIT=$(docker wait "$CID")
+    if [ "$EXIT" != "0" ]; then
+        echo
+        echo "=== LAST INSTALLER LOGS TO PASTE ==="
+        docker logs --tail 80 "$CID" 2>/dev/null || true
+        docker rm "$CID" >/dev/null
+        echo "=== END INSTALLER LOGS exit=$EXIT ==="
+        exit 1
     fi
-    echo "Waiting for old installer container removal (${i}/30)..."
-    sleep 1
-done
-
-CID=$(docker run -d --privileged $KVM $PORTS \
-    --name "$INSTALL_CONTAINER" \
-    --label fc3-qemu.role=installer \
-    $DOCKER_DNS_ARGS \
-    -v "$ISO_DIR_ABS":/fc3/isos:ro \
-    -v "$TREE_DIR_ABS":/fc3/tree:ro \
-    -v "$(pwd)/kickstart.cfg":/fc3/kickstart.cfg:ro \
-    -e ROOT_PASSWORD="$ROOT_PASSWORD" \
-    -e INSTALL_USE_KVM="$INSTALL_USE_KVM" \
-    -e INSTALL_VNC="$INSTALL_VNC" \
-    -e INSTALL_CPU="$INSTALL_CPU" \
-    -e INSTALL_MEM="$INSTALL_MEM" \
-    -e INSTALL_NET_MODEL="$INSTALL_NET_MODEL" \
-    -e TREE_DIR=/fc3/tree \
-    fc3-base \
-    bash /fc3/scripts/install-vm.sh)
-
-echo "Installer container: $CID"
-echo "Status check: ./scripts/install-status.sh"
-
-docker logs -f "$CID"
-EXIT=$(docker wait "$CID")
-if [ "$EXIT" != "0" ]; then
-    echo
-    echo "=== LAST INSTALLER LOGS TO PASTE ==="
-    docker logs --tail 80 "$CID" 2>/dev/null || true
-    docker rm "$CID" >/dev/null
-    echo "=== END INSTALLER LOGS exit=$EXIT ==="
-    exit 1
+    docker commit "$CID" fc3-installed
+    docker rm "$CID"
 fi
-docker commit "$CID" fc3-installed
-docker rm "$CID"
 
 # Step 4: images used after the guest OS is installed
 docker build -f Dockerfile.interactive -t fc3-interactive .

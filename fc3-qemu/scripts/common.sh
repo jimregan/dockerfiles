@@ -29,6 +29,51 @@ qemu_net_device_args() {
     printf '%s\n' "-device $model,netdev=net0"
 }
 
+AUDIO_FIFO=${AUDIO_FIFO:-/tmp/fc3-audio.fifo}
+ICECAST_PORT=${ICECAST_PORT:-8000}
+ICECAST_MOUNT=${ICECAST_MOUNT:-fc3.mp3}
+
+qemu_sound_device_args() {
+    printf '%s\n' "-device ES1370,audiodev=snd0 -audiodev wav,id=snd0,path=$AUDIO_FIFO"
+}
+
+# Guest audio has no VNC channel to ride out on, so it's captured from QEMU's
+# wav audiodev (writing to $AUDIO_FIFO) and re-encoded live to an Icecast
+# mount noVNC's page can play from (see scripts/novnc/fc3-audio-button.js).
+# Call before starting QEMU: ffmpeg has to be waiting on the FIFO's read end
+# before QEMU opens it for writing, or both sides block on open().
+#
+# QEMU's wav audiodev writes a self-contained WAV file per playback burst,
+# closing and reopening the FIFO's write end between bursts (e.g. separate
+# guest aplay invocations) rather than holding it open for the VM's whole
+# life. An ffmpeg attached straight to Icecast dies (or has to reconnect,
+# glitching the stream and risking a stray WAV header landing mid-stream)
+# every time a burst ends, since it's parsing WAV framing on every
+# restart. Split it in two: an inner loop absorbs that per-burst WAV
+# restarting and demuxes each burst to headerless raw PCM on a pipe; a
+# single outer ffmpeg reads that pipe as one continuous PCM stream (no
+# framing to reparse, ever) and holds one unbroken connection to Icecast
+# for the container's whole life. Bash keeps the pipe's write end open
+# across the inner loop's iterations regardless of individual ffmpeg runs
+# inside it starting and exiting, so the outer ffmpeg never sees EOF just
+# because one burst ended.
+start_audio_stream() {
+    rm -f "$AUDIO_FIFO"
+    mkfifo "$AUDIO_FIFO"
+
+    icecast2 -c /etc/icecast2/icecast.xml -b
+    sleep 1
+
+    ( while true; do
+          ffmpeg -f wav -ignore_length 1 -i "$AUDIO_FIFO" \
+              -f s16le -ar 44100 -ac 2 - 2>>/tmp/fc3-audio-capture.log
+      done ) | ffmpeg -f s16le -ar 44100 -ac 2 -i - \
+          -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
+          -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}" \
+          >/tmp/fc3-audio-stream.log 2>&1 &
+    AUDIO_STREAM_PID=$!
+}
+
 ssh_cmd() {
     sshpass -p "$ROOT_PASSWORD" ssh \
         -p "$SSH_PORT" \
@@ -38,6 +83,8 @@ ssh_cmd() {
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o ConnectTimeout=5 \
+        -o ServerAliveInterval=5 \
+        -o ServerAliveCountMax=3 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
         -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
@@ -54,6 +101,8 @@ scp_to_guest() {
         -o StrictHostKeyChecking=no \
         -o UserKnownHostsFile=/dev/null \
         -o ConnectTimeout=5 \
+        -o ServerAliveInterval=5 \
+        -o ServerAliveCountMax=3 \
         -o HostKeyAlgorithms=+ssh-rsa,ssh-dss \
         -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-dss \
         -o KexAlgorithms=+diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1 \
@@ -104,6 +153,22 @@ EOF"
 
 shutdown_guest() {
     ssh_cmd "shutdown -h now" || true
+}
+
+# A dead guest network (e.g. Slirp packet loss) leaves ssh_cmd's ServerAlive
+# keepalive to fail the shutdown command, but QEMU itself never receives the
+# shutdown and keeps running — so bound how long we wait for it to exit
+# before giving up and killing it, rather than hanging indefinitely.
+wait_for_qemu_exit() {
+    local qemu_pid=${1:?qemu pid required}
+    local timeout_seconds=${2:-60}
+
+    if timeout "$timeout_seconds" tail --pid="$qemu_pid" -f /dev/null 2>/dev/null; then
+        return 0
+    fi
+
+    echo "QEMU (pid $qemu_pid) did not exit within ${timeout_seconds}s of shutdown; killing it."
+    kill -9 "$qemu_pid" 2>/dev/null || true
 }
 
 require_bootable_disk() {

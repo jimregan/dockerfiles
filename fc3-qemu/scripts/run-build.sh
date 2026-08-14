@@ -51,4 +51,4 @@ echo "Done. RPMs are in $RPM_OUT:"
 ls -lh "$RPM_OUT"/*.rpm
 
 shutdown_guest
-wait $QEMU_PID || true
+wait_for_qemu_exit $QEMU_PID

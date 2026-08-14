@@ -13,6 +13,8 @@ TREE_DIR=${TREE_DIR:-/fc3/tree}
 INSTALL_HTTP_PORT=${INSTALL_HTTP_PORT:-8000}
 INSTALL_NET_MODEL=${INSTALL_NET_MODEL:-pcnet}
 INSTALL_URL="http://10.0.2.2:${INSTALL_HTTP_PORT}"
+TCLPLUGIN_RPM_URL=${TCLPLUGIN_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/tclplugin-3.1-1.i386.rpm}
+SNACK_RPM_URL=${SNACK_RPM_URL:-https://github.com/jimregan/tclplugin/releases/download/fc3-rpm-3.1-1/snack-2.2.10-1.i386.rpm}
 WORK=/tmp/fc3-install
 MNT1="$WORK/disc1"
 KERNEL="$WORK/vmlinuz"
@@ -85,6 +87,22 @@ extract_installer_kernel() {
     umount "$MNT1"
 }
 
+fetch_extra_rpms() {
+    INSTALL_STATUS="fetching-extra-rpms"
+    mkdir -p "$HTTP_ROOT/extra-rpms"
+    echo "Fetching $TCLPLUGIN_RPM_URL"
+    curl -fsSL -o "$HTTP_ROOT/extra-rpms/tclplugin.rpm" "$TCLPLUGIN_RPM_URL" \
+        || fail "Failed to fetch TCLPLUGIN_RPM_URL=$TCLPLUGIN_RPM_URL"
+    echo "Fetching $SNACK_RPM_URL"
+    curl -fsSL -o "$HTTP_ROOT/extra-rpms/snack.rpm" "$SNACK_RPM_URL" \
+        || fail "Failed to fetch SNACK_RPM_URL=$SNACK_RPM_URL"
+    for rpm in tclplugin snack; do
+        magic=$(head -c4 "$HTTP_ROOT/extra-rpms/$rpm.rpm" | od -An -tx1 | tr -d ' \n')
+        [ "$magic" = "edabeedb" ] \
+            || fail "$HTTP_ROOT/extra-rpms/$rpm.rpm is not a valid RPM"
+    done
+}
+
 start_install_http() {
     local entry
 
@@ -95,6 +113,8 @@ start_install_http() {
         ln -s "$entry" "$HTTP_ROOT"/
     done
     shopt -u dotglob nullglob
+
+    fetch_extra_rpms
 
     sed "s|@INSTALL_URL@|$INSTALL_URL|g" /fc3/kickstart.cfg > "$HTTP_ROOT/ks.cfg"
 

@@ -2,8 +2,10 @@
 
 This repo builds a Fedora Core 3 VM image and wraps it in two Docker images:
 
-- `fc3-interactive`: boots the installed FC3 VM with noVNC and SSH for manual debugging.
-- `fc3-final`: starts from the clean installed VM, installs the Tcl plugin RPM, and boots Mozilla on X.
+- `fc3-interactive`: the installed FC3 VM with noVNC and SSH for manual debugging, plugins and all.
+- `fc3-final`: the same VM, without the SSH/debugging-oriented extras.
+
+The Tcl plugin and Snack Sound Toolkit RPMs are installed once, during the kickstart install itself, so both images inherit them along with X-boots-to-Mozilla behavior straight from `fc3-installed` — `fc3-final` is really just `fc3-interactive` without the workspace/rpmbuild mounts. Both still separately copy in and serve `lab/` for the guest to browse.
 
 The VM disk is created once into an intermediate Docker image named `fc3-installed`. The images above inherit that disk.
 
@@ -81,6 +83,12 @@ The guest root password defaults to `rootpassword`. To change it for the automat
 ROOT_PASSWORD=your-password ISO_DIR=/path/to/fc3-isos ./build.sh
 ```
 
+`kickstart.cfg`'s `%post` also fetches and installs the Tcl plugin and Snack Sound Toolkit RPMs directly, right after the base packages — the installer container downloads them (it has normal outbound internet access; the guest itself doesn't need to reach past the QEMU usermode gateway) and serves them from the same local install-tree HTTP server the kickstart itself uses, so the guest only ever fetches from `10.0.2.2`. `TCLPLUGIN_RPM_URL` and `SNACK_RPM_URL` default to release assets published alongside each other; override either if needed:
+
+```bash
+SNACK_RPM_URL=https://example.com/my-snack.rpm ISO_DIR=/path/to/fc3-isos ./build.sh
+```
+
 ## Image 1: Interactive Development
 
 ```bash
@@ -91,6 +99,7 @@ Access:
 
 - noVNC: `http://localhost:6080/vnc.html`
 - SSH: `ssh -p 2222 root@localhost`
+- Audio stream: `http://localhost:8000/fc3.mp3` (also playable from the "Audio" button on the noVNC page)
 
 If SSH is not up in an older installed image, log in through noVNC as root and run:
 
@@ -105,11 +114,9 @@ The host `./rpmbuild` tree is mounted into the Docker container at `/rpmbuild`. 
 docker compose exec interactive bash /fc3/scripts/sync-rpmbuild-to-guest.sh
 ```
 
-That copies `/rpmbuild` in the container to `/root/rpmbuild` in the guest. Use this VM for manual debugging or source inspection; the final image uses the published Tcl plugin RPM by default.
+That copies `/rpmbuild` in the container to `/root/rpmbuild` in the guest. Use this VM when you also want SSH/console access alongside the working lab demos; `final` is the same guest disk without the workspace/rpmbuild mounts.
 
 ## Image 2: Final Mozilla Runtime
-
-The final image downloads the FC3 Tcl plugin RPM release by default. Override the release URL if needed with `TCLPLUGIN_RPM_URL`.
 
 ```bash
 docker compose --profile final build final
@@ -120,10 +127,22 @@ Access:
 
 - noVNC: `http://localhost:6080/vnc.html`
 - SSH: `ssh -p 2222 root@localhost`
+- Audio stream: `http://localhost:8000/fc3.mp3` (also playable from the "Audio" button on the noVNC page)
 
-During the final image build, the RPM is installed into the guest disk and `/root/.xinitrc` is configured to launch Mozilla directly under X, without a desktop session. The final container serves local `lab/` files at `http://www.speech.kth.se/labs/analysis/` for the guest, with `.tcl` served as `application/x-tcl`. On boot, the VM starts X on QEMU's VNC display and opens that URL.
+## Boot, Lab Files, and Audio
 
-## Tcl Plugin Notes
+The shared kickstart (`kickstart.cfg`) bakes both the Tcl plugin/Snack RPM install and X-on-boot into `fc3-installed` itself, so both images boot straight to a full GNOME session (via `/root/.xinitrc`, started from `rc.local`) with Mozilla already open at `http://www.speech.kth.se/labs/analysis/` — no manual `startx` needed. `.xinitrc` launches Mozilla in the background and then `exec`s `gnome-session`, so the guest gets a real window manager and panel over VNC instead of an undecorated, un-movable Mozilla window with no way to reach its own address bar. `/etc/hosts` on the guest resolves `www.speech.kth.se` to `10.0.2.2`, the QEMU usermode gateway, which SLIRP forwards straight through to the container.
+
+Each container runs `scripts/lab-server.py`, a small `http.server` bound to port 80 that serves `./lab/` (copied into the image at `/www/labs/analysis/`) with `.tcl` mapped to `application/x-tcl`. Nothing above that path is served — there's no wider site to fake, just the one directory the demos expect.
+
+The `lab/` demos are KTH's own Snack-based speech tools and drive real audio hardware (`package require snack`, `audio output`, `s play`), so there's no VNC audio channel to tap. Instead:
+
+- QEMU emulates an ES1370 (Ensoniq AudioPCI) sound card, and its `wav` audiodev writes PCM to a FIFO (`scripts/common.sh`'s `qemu_sound_device_args`/`start_audio_stream`) instead of a static file. The guest needs to actually recognize that card: `kickstart.cfg`'s `%post` installs `alsa-utils` and aliases `snd-card-0`/`sound-slot-0` to `snd-ens1370` (plus `snd-pcm-oss`/`snd-mixer-oss` for the `/dev/dsp` compat layer Snack uses) — without this, only the legacy in-kernel OSS `es1370` driver was aliased, ALSA never saw a card at all, and GNOME's (ALSA-based) sound applet had nothing to find.
+- GNOME's own sound playback (Sound Preferences' "test sound", etc.) goes through GStreamer's `gconfaudiosink`, which reads its actual sink element from the GConf key `/system/gstreamer/0.8/default/audiosink`. A fresh kickstart install never runs GNOME's first-login druid that normally sets this, so the key is empty and `gconfaudiosink` fails to link with a generic "Pad problem. File a bug" instead of playing anything. `kickstart.cfg`'s `%post` sets it directly via `gconftool-2 --direct --config-source xml:readwrite:/etc/gconf/gconf.xml.mandatory` to `alsasink`.
+- `ffmpeg` reads that FIFO live and re-encodes it to MP3, pushed to an Icecast server (`icecast2`, both installed in `Dockerfile.base`) at `/fc3.mp3` on port 8000.
+- noVNC's page has a small vendored script (`scripts/novnc/fc3-audio-button.js`, injected into `vnc.html` at image build time) adding an "Audio" toggle button that plays that Icecast stream directly — no third-party CDN dependency, just the stream itself.
+
+## Tcl Plugin and Snack Notes
 
 FC3 ships Mozilla 1.7 and Tcl/Tk 8.4, which is what the last version of the Tcl plugin needs (the plugin's minimum is Mozilla 1.0). The target plugin artifact should be installed by the RPM into Mozilla's plugin directory, usually:
 
@@ -132,3 +151,7 @@ FC3 ships Mozilla 1.7 and Tcl/Tk 8.4, which is what the last version of the Tcl 
 ```
 
 The historical Tcl plugin build usually needs Tcl/Tk headers, X11 headers, and NPAPI headers. The kickstart installs Tcl/Tk, X.org (`xorg-x11`, replacing XFree86 as of FC3), Mozilla, compiler, and rpm-build packages; if Mozilla's RPM does not include the NPAPI headers, put the matching Mozilla 1.7 headers in `rpmbuild/SOURCES` and reference them from the spec.
+
+The `lab/` demos also need the Snack Sound Toolkit (`package require snack`), which is a separate Tcl extension from the Tcl plugin itself — it's what actually plays and visualizes audio, while the Tcl plugin only lets Mozilla embed and run `.tcl` files at all. Both `tclplugin-3.1-1.i386.rpm` and `snack-2.2.10-1.i386.rpm` are installed the same way, one `rpm -Uvh` each (not combined into one transaction — FC3's rpm has thrown spurious dependency failures against unrelated already-installed packages when they're combined) from `kickstart.cfg`'s `%post`, fetched from `TCLPLUGIN_RPM_URL`/`SNACK_RPM_URL` by `scripts/install-vm.sh` before the guest ever boots.
+
+Loading the plugin is not enough on its own for `package require snack` to succeed inside it: each tclet runs in its own `::safe::interpCreate`'d slave (`browser.tcl`), and `/usr/lib/snack2.2` is never on that slave's access path by default. The plugin's own hook for this is `~/.tclpluginrc`: `browser.tcl` sources it once at startup and calls `siteInit`, then calls `siteSafeInit $slave` for every new tclet's slave interpreter — `kickstart.cfg` writes `/root/.tclpluginrc` defining `siteSafeInit` to call `::safe::interpAddToAccessPath $slave /usr/lib/snack2.2`, which is what actually makes `package require snack` succeed.
