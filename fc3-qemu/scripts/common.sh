@@ -46,10 +46,17 @@ qemu_sound_device_args() {
 # QEMU's wav audiodev writes a self-contained WAV file per playback burst,
 # closing and reopening the FIFO's write end between bursts (e.g. separate
 # guest aplay invocations) rather than holding it open for the VM's whole
-# life. A single ffmpeg only ever opens the FIFO once, so it sees EOF and
-# exits for good the moment the first burst ends -- silently killing the
-# Icecast mount for the rest of the session. Loop it so every new burst
-# gets a fresh ffmpeg reconnecting to Icecast.
+# life. An ffmpeg attached straight to Icecast dies (or has to reconnect,
+# glitching the stream and risking a stray WAV header landing mid-stream)
+# every time a burst ends, since it's parsing WAV framing on every
+# restart. Split it in two: an inner loop absorbs that per-burst WAV
+# restarting and demuxes each burst to headerless raw PCM on a pipe; a
+# single outer ffmpeg reads that pipe as one continuous PCM stream (no
+# framing to reparse, ever) and holds one unbroken connection to Icecast
+# for the container's whole life. Bash keeps the pipe's write end open
+# across the inner loop's iterations regardless of individual ffmpeg runs
+# inside it starting and exiting, so the outer ffmpeg never sees EOF just
+# because one burst ended.
 start_audio_stream() {
     rm -f "$AUDIO_FIFO"
     mkfifo "$AUDIO_FIFO"
@@ -59,9 +66,11 @@ start_audio_stream() {
 
     ( while true; do
           ffmpeg -f wav -ignore_length 1 -i "$AUDIO_FIFO" \
-              -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
-              -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}"
-      done ) >/tmp/fc3-audio-stream.log 2>&1 &
+              -f s16le -ar 44100 -ac 2 - 2>>/tmp/fc3-audio-capture.log
+      done ) | ffmpeg -f s16le -ar 44100 -ac 2 -i - \
+          -c:a libmp3lame -b:a 128k -content_type audio/mpeg \
+          -f mp3 "icecast://source:hackme@localhost:${ICECAST_PORT}/${ICECAST_MOUNT}" \
+          >/tmp/fc3-audio-stream.log 2>&1 &
     AUDIO_STREAM_PID=$!
 }
 
