@@ -8,9 +8,10 @@ ENV HF_HOME=/cache/huggingface \
     DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg libsndfile1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir "nemo_toolkit[asr]==2.5.0"
+    && apt-get install -y --no-install-recommends build-essential ffmpeg libsndfile1 \
+    && pip install --no-cache-dir "nemo_toolkit[asr]==2.5.0" \
+    && apt-get purge -y --auto-remove build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY transcribe.py /app/transcribe.py
 
