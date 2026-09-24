@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 
 import torch
@@ -11,7 +12,7 @@ def parse_args():
     parser.add_argument("audio", nargs="+", help="One or more audio files")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--timestamps", action="store_true")
-    parser.add_argument("--model", default="KlangAI/pianissimo-sv")
+    parser.add_argument("--model", default=os.environ.get("MODEL_PATH", "KlangAI/pianissimo-sv"))
     return parser.parse_args()
 
 
