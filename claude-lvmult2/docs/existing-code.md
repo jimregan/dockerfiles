@@ -31,6 +31,26 @@ inlined arg helpers, CTM channel 0 or 1, and an unused `hfjson` choice.
 - Inherited bugs: `raise Warning` then an unreachable `continue` (one bad recording aborts
   the run), `logger.warn`, module-level globals.
 
+**Passes of the aligner across branches.** Jim confirmed the Kaldi Smith–Waterman in
+sync-asr is the aligner, with several passes at it. The working tree is on branch
+`extractions`, not `main`. `align_ctm_ref.py` exists in four versions (by blob hash). The
+DP core is the same in all of them; only the word comparison differs:
+
+| Version | Branches | Comparison |
+|---|---|---|
+| `f61fa139` Kaldi | 22 older branches (sentence-extraction, whisperx-reverse, hungarian…) | exact match; CTM channel must be 1 |
+| `2b5340e8` | `ignore-punctuation-in-aligner` (2024-03-20, "does not work currently") | hyp edge-punctuation stripped and lowercased; ref compared raw |
+| `073ec86f` | `main` (PR #60, 2026-09-10, same "does not work currently" note) | `--ignore-punctuation` (default true): `clean_text` strips **edge** punctuation and lowercases **both** sides. Inconsistent defaults: `get_edit_type` False, `get_ctm_edits` True |
+| `fae56d77` | `extractions` (reviewed above; newest) | exact match in the Kaldi file; case/punct handling moved into `alignment.py` (strips **all** `P*`) |
+
+So the DP is settled, and the open part is the comparison. `main`'s edge-only stripping is
+closer to what we need than `alignment.py`'s all-`P*` stripping, since it keeps `don't`.
+But it would also turn a partial `fo-` into `fo`, and wav2vec emits partials without a
+hyphen anyway. Plan: take the DP from Kaldi, take the index-preserving wrapper from
+`extractions`' `alignment.py`, and do the comparison by mapping both sides into the wav2vec
+alphabet in our normaliser (A–Z, `'`, word breaks) before the DP, not inside it. The three
+other versions are kept for reference in `vendor/sync_asr/variants/`.
+
 **`sync_asr/alignment.py`** (2026-07 to 09, Jim's own) is the actual "adaptation".
 - `align_smith_waterman(ref, hyp, ignore_case=, ignore_punctuation=, heuristics=)` wraps
   the Kaldi DP and returns `AlignedSequence` of `AlignedGroup(a_indices, b_indices, kind)`.
@@ -115,8 +135,8 @@ similarity: WavLM encoders, a contrastive sampler):
 - a saved LibriVox wiki **Accents Table** (self-reported reader → location/accent,
   about 116 rows)
 
-It is a likely **downstream consumer** of this corpus: same-sentence groups across speakers
-are what `text_id` joins produce. Nothing in it does alignment or attribution.
+Jim (2026-11-05): exploratory work, mostly looking for accents. That explains the saved
+Accents Table. Nothing in it does alignment or attribution.
 
 ## 4. `librivox-mult-work-files/` (Jim's working repo; data, plus one notebook)
 

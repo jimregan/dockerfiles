@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "beautifulsoup4>=4.12",
     "lxml>=5",
+    "numpy>=1.26",
 ]
 
 [project.scripts]

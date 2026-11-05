@@ -180,8 +180,11 @@ RESPIRO_ROOT = Path("/src-projects/librivox-mult-work-files/respiro")
 
 
 def find_asr(data: Path, work: str, reading_dir: str, stem: str,
-             respiro_root: Path = RESPIRO_ROOT) -> dict:
-    out = {"vibevoice": vibevoice_info(data / work / reading_dir / f"{stem}.json")}
+             respiro_root: Path = RESPIRO_ROOT, staging: Path | None = None) -> dict:
+    vv = data / work / reading_dir / f"{stem}.json"
+    if not vv.exists() and staging is not None and (staging / work / reading_dir / f"{stem}.json").exists():
+        vv = staging / work / reading_dir / f"{stem}.json"
+    out = {"vibevoice": vibevoice_info(vv)}
     out["respiro"] = respiro_info(respiro_root / work / reading_dir / f"{stem}.jsonl")
     out["whisperx"] = whisperx_info(data / "whisperx" / work / reading_dir / f"{stem}.json")
     # wav2vec2: layout unknown (directory empty at time of survey); look for any
@@ -251,8 +254,14 @@ def reader_key(r: dict) -> str:
 
 
 def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
-                   respiro_root: Path = RESPIRO_ROOT) -> list[dict]:
+                   respiro_root: Path = RESPIRO_ROOT, staging: Path | None = None) -> list[dict]:
     index = rdir / "index.html"
+    index_source = "data"
+    if not index.exists() and staging is not None:
+        # pages fetched later (e.g. from librivox.org) and staged for copying into /data
+        alt = staging / work / rdir.name / "index.html"
+        if alt.exists():
+            index, index_source = alt, f"staging:{alt}"
     page = parse_page(index.read_text(encoding="utf-8", errors="replace")) if index.exists() else None
     mp3s = sorted(rdir.glob("*.mp3"))
     stray = sorted(p.name for p in rdir.iterdir() if p.is_file() and re.search(r"\.mp3\.\d+$", p.name))
@@ -293,7 +302,7 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
             "channels": pr.get("channels"),
             "bit_rate": pr.get("bit_rate"),
             "probe_error": pr.get("error"),
-            "asr": find_asr(data, work, rdir.name, p.stem, respiro_root),
+            "asr": find_asr(data, work, rdir.name, p.stem, respiro_root, staging),
         }
         for k in ("author", "source", "source_urls", "gutenberg_ids"):
             if sec and k in sec:
@@ -334,6 +343,7 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
             "work": work,
             "reading_id": reading_id,
             "reading_dir": str(rdir),
+            "index_source": index_source if page else None,
             "librivox_slug": rdir.name,
             "librivox_id": page["librivox_id"] if page else None,
             "archive_id": page["archive_id"] if page else None,
@@ -388,6 +398,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--work", action="append", help="limit to these work dirs (repeatable)")
     ap.add_argument("--reading", action="append", help="limit to these LibriVox slugs (repeatable)")
     ap.add_argument("--force", action="store_true", help="re-probe audio, ignore cache")
+    ap.add_argument("--staging", type=Path, default=Path("/out/staging/data"),
+                    help="fallback for files not yet copied into /data (same layout)")
     ap.add_argument("--respiro", type=Path, default=RESPIRO_ROOT,
                     help="root of Respiro breath outputs (<work>/<slug>/<stem>.jsonl)")
     ap.add_argument("--jobs", type=int, default=min(16, (os.cpu_count() or 4)))
@@ -412,7 +424,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rows = []
     for w, r in rdirs:
-        rows.extend(survey_reading(a.data, w, r, probes, a.respiro))
+        rows.extend(survey_reading(a.data, w, r, probes, a.respiro, a.staging))
     rows.sort(key=lambda x: (x["work"], x["reading_id"]))
 
     # partial runs update only their own rows in an existing inventory

@@ -16,3 +16,8 @@ reference for what was taken. See `docs/existing-code.md` for the reasons.
 
 `data/ref/librivox-wiki-accents-table.html` is a saved LibriVox wiki page
 (reader → location/accent, self-reported, ~116 rows) from `librivox-multispeaker`.
+
+`sync_asr/variants/`: the other versions of `align_ctm_ref.py` in sync-asr, for
+reference only: `main` (073ec86f, edge-punctuation `--ignore-punctuation`),
+`ignore-punctuation-in-aligner` (2b5340e8), and upstream-Kaldi-like (f61fa139).
+See `docs/existing-code.md`.

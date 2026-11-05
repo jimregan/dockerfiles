@@ -13,7 +13,7 @@ and `/out/stage0/ffprobe.jsonl` (probe cache). Numbers below are from that run.
 | audio files | 5,442 mp3 (88 GB) |
 | audio | 1,581.3 h |
 | WhisperX outputs | 5,326 / 5,442 files |
-| VibeVoice outputs | 4,349 / 5,442 files |
+| VibeVoice outputs | 4,351 / 5,442 files (incl. 2 staged from the work-files repo) |
 | Respiro breath outputs | 5,442 / 5,442 files (from `/src-projects/librivox-mult-work-files`) |
 | **wav2vec2 outputs** | **0**: `/data/wav2vec2/` exists but is empty (also on the worker) |
 | Gutenberg HTML | **none in `/data`**; only links in `index.html` |
@@ -139,7 +139,13 @@ Respiro notes:
   when a breath agrees with a sentence-end boundary (see `docs/decisions.md`). It is not
   used for pause measurement or segmentation, and no further investigation is planned.
 
-Still absent: wav2vec2 output, Gutenberg HTML (except pg40745), and the index page for Secret Garden reading 2.
+wav2vec2 output was lost (Jim) and is being regenerated (`stage_w2v`). Gutenberg HTML has
+since been downloaded (see Source texts). The Secret Garden reading 2 page was fetched
+from librivox.org (see Data issues).
+
+**Staging (`/out/staging/data/`, same layout as `/data`, for Jim to `cp -rn` into `/data`):**
+the 2 `main`-only VibeVoice files and `lv5235`'s index.html. Stage 0 reads from there as a
+fallback until they are copied.
 
 ## Source texts
 
@@ -155,9 +161,10 @@ Still absent: wav2vec2 output, Gutenberg HTML (except pg40745), and the index pa
   little-women (514/37106), northanger-abbey (121/13028 anthology), oliver-twist (730/5343),
   puck-of-pooks-hill (15976/26027), shakespeares-sonnets (1041/1600), the-secret-garden
   (113/17396), wuthering-heights (768/13623 anthology).
-- **No Gutenberg HTML is present.** `www.gutenberg.org` is on the allowlist, but its
-  comment says "metadata lookups only". Fetching the 59 distinct Gutenberg books (to `/out/gutenberg/`?)
-  needs Jim's go-ahead.
+- **Gutenberg HTML** (none in `/data`) was fetched on 2026-11-05 by
+  `python -m librivox_mult.fetch_gutenberg` into `/out/gutenberg/pg<N>-images.html`:
+  59 distinct IDs, 58 downloaded and pg40745 copied from the work-files repo, 39 MB.
+  `manifest.jsonl` records url, date and sha256 (Gutenberg re-releases files).
 
 ## Dramatic readings
 
@@ -173,9 +180,13 @@ doesn't tag "one reader doing voices". Finding them needs listening or an audio 
 
 ## Data issues
 
-- `the-secret-garden/the-secret-garden-by-frances-hodgson-burnett-2`: **no index.html**.
-  27 mp3s with VibeVoice and WhisperX output. Its audio differs from the other four Secret
-  Garden readings, so it is a fifth reading with unknown LibriVox id, reader and source.
+- `the-secret-garden/the-secret-garden-by-frances-hodgson-burnett-2` had **no index.html**.
+  It is **The Secret Garden (version 3), `lv5235`**, read by ashleighjane (`librivox:5468`),
+  source pg113. That was confirmed by fetching `librivox.org/the-secret-garden-by-frances-hodgson-burnett-2/`:
+  all 27 file names match, with a median |Δt| of 0.4 s against the listed times. Note this
+  is *not* `…-version-2` (lv2694), whose times are off by a median of 48 s. The page is
+  staged at `/out/staging/data/…/index.html` for copying into `/data`, and Stage 0 reads
+  it from there meanwhile (`index_source`).
 - Sections listed on LibriVox but not downloaded: Monte Cristo `lv6263` 14 of 120,
   aesop `lv9041` 3 of 20, and one each in `lv193`, `lv18216`, `lv4838`, `lv1135`, `lv9632`.
 - `aesop/aesops-fables-new-translation-by-aesop/…_04_aesop_128kb.mp3.1`: a duplicate wget
