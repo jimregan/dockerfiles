@@ -1,12 +1,13 @@
 FROM ollama/ollama:latest AS builder
 
-COPY qwen-3.5-9b/Modelfile .
+RUN nohup ollama serve > /tmp/ollama.log 2>&1 & \
+    sleep 10 && \
+    ollama pull qwen3.5:9b
 
-#RUN ollama create mymodel -f Modelfile
+COPY qwen-3.5-9b/Modelfile .
 
 RUN nohup ollama serve > /tmp/ollama.log 2>&1 & \
     sleep 10 && \
-    ollama pull qwen3.5:9b && \
     ollama create quiggin -f Modelfile
 
 FROM ollama/ollama:latest
