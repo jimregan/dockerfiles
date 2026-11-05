@@ -7,3 +7,5 @@
 - 2026-11-05: Dramatic = cast list, "Dramatic Readings" genre, or `dramatic-reading` slug; not free-text "dramatic" (Dickens's "Condensed … for his Dramatic Readings" is solo).
 - 2026-11-05: Kept code is vendored verbatim under `vendor/` with provenance; adaptation happens in `src/` at the consuming stage (see `docs/existing-code.md`).
 - 2026-11-05: Kaldi SW aligner is reused but must be made global over the reference (flanking ref words currently vanish instead of becoming `del`).
+- 2026-11-05: Respiro breath outputs are read in place from `/src-projects/librivox-mult-work-files/respiro` (`--respiro` to override) and recorded as `asr.respiro`.
+- 2026-11-05: Duplicated WhisperX/VibeVoice/index data in the work-files repo is ignored; `/data` stays the source of truth.

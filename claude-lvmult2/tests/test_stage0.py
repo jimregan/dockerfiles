@@ -86,6 +86,14 @@ def test_match_section_bitrate_suffix():
     assert s0.match_section("b.mp3", secs) is None
 
 
+def test_respiro_info(tmp_path):
+    p = tmp_path / "x.jsonl"
+    p.write_text(json.dumps({"audio_file": "a/b/x.mp3", "breaths": [[0.0, 0.5], [3.0, 3.25]]}) + "\n")
+    i = s0.respiro_info(p)
+    assert i["n_breaths"] == 2 and i["breath_time"] == 0.75 and i["first_starts_at_zero"]
+    assert s0.respiro_info(tmp_path / "nope.jsonl") == {"present": False}
+
+
 def test_asr_readers(tmp_path):
     vv = tmp_path / "x.json"
     vv.write_text(json.dumps([
@@ -122,6 +130,8 @@ def test_survey_one_reading_end_to_end(tmp_path):
     assert s["sampling_rate"] == 44100 and s["num_samples"] > 0
     assert abs(s["duration"] - 743.2) < 2.0
     assert s["asr"]["whisperx"]["present"] and s["asr"]["vibevoice"]["present"]
+    if s0.RESPIRO_ROOT.exists():
+        assert s["asr"]["respiro"]["present"]
     # second run reuses the probe cache and is byte-identical (deterministic)
     first = (tmp_path / "inventory.jsonl").read_bytes()
     assert s0.main(["--out", str(tmp_path), "--reading", rd]) == 0

@@ -14,6 +14,7 @@ and `/out/stage0/ffprobe.jsonl` (probe cache). Numbers below are from that run.
 | audio | 1,581.3 h |
 | WhisperX outputs | 5,326 / 5,442 files |
 | VibeVoice outputs | 4,349 / 5,442 files |
+| Respiro breath outputs | 5,442 / 5,442 files (from `/src-projects/librivox-mult-work-files`) |
 | **wav2vec2 outputs** | **0**: `/data/wav2vec2/` exists but is empty (also on the worker) |
 | Gutenberg HTML | **none in `/data`**; only links in `index.html` |
 | sampling rate | 44.1 kHz 5,410; 22.05 kHz 20; 32 kHz 6; 48 kHz 5; 16 kHz 1. Ten readings mix rates across sections |
@@ -111,6 +112,34 @@ bracketed content: `[Noise]` 2,072, `[Music]` 1,102, `[Silence]` 817,
 **wav2vec2:** none. The worker's HF cache has `facebook/wav2vec2-large-960h-lv60-self`
 (the SETUP.md default, which uses an upper-case letter vocabulary with `'` and `|`), but
 nothing records that this model was the one used, and there are no outputs. **Ask.**
+
+## `/src-projects/librivox-mult-work-files` (Jim's working repo, git)
+
+The working tree is on branch `respiro` (HEAD `a126390b`, 2026-04-15). Read-only, so the
+other branches were read with `git show` / `ls-tree`.
+
+| Path / branch | Contents | Relation to `/data` |
+|---|---|---|
+| `respiro/<work>/<slug>/<stem>.jsonl` | **Breath detection**: one line `{audio_file, breaths: [[start, end], …]}` (s) | **New.** Covers all 5,442 mp3s. Now in the inventory as `asr.respiro` |
+| `whisperx/` (all branches) | 5,326 WhisperX JSON | Same content as `/data/whisperx`; the repo copy is pretty-printed, and 300/300 sampled files are equal when parsed |
+| `vibevoice/` (tree: 4,336; `main` and `vv-missing`: 4,344) | VibeVoice JSON | 4,342 identical to `/data`. **2 only on `main`**: `the-crocodile/…/crocodile_01_dostoyevsky_128kb.json` and `wuthering-heights/…-2/wutheringheights_21_bronte.json`. A stash on `vv-missing` edits 6 Christmas Carol files |
+| `index/` (tree) | 201 index.html | Whitespace-stripped copies of `/data` pages, parsing identically. The 13 missing are celebration-of-dialects, northanger-abbey and shakespeares-sonnets |
+| `index-html/` (`index-pages` branch) | 214 index.html | Byte-identical to `/data`. **No page for `the-secret-garden-by-frances-hodgson-burnett-2`** here either |
+| `text/the-crocodile/` (tree; `text` branch history) | `pg40745-images.html` (Gutenberg HTML, the *Short Stories* anthology that includes *The Crocodile*), hand-cut `text_01..04` (one HTML chunk per LibriVox section), `parse_text.ipynb`, `output_0N.tsv` | **Stage 1 prototype for one text**, see `docs/existing-code.md` §4. The only Gutenberg HTML anywhere |
+| `index-html/` (tree) | empty dir | |
+
+Respiro notes:
+- Median 126 breaths per file.
+- 1,335 files have a first interval starting at 0.0 s (median end 0.70 s). This may be
+  leading silence or room tone detected as a breath, so check it before using it as a
+  pause cue.
+- 73 files have **no breaths**. They cluster by reading: `lv14329` (18 files),
+  `lv356`/`lv6263` (6 each), `lv8149`/`lv2994` (5 each), aesop volumes. Some are 31 min
+  long. That suggests readers who edited breaths out, which is a reading-level property
+  and itself useful for Stage 6.
+- What exactly "Respiro" is (model, threshold) isn't recorded in the repo. **Ask.**
+
+Still absent: wav2vec2 output, Gutenberg HTML (except pg40745), and the index page for Secret Garden reading 2.
 
 ## Source texts
 

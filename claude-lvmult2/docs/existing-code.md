@@ -1,6 +1,6 @@
 # Existing code in `/src-projects` (reviewed 2026-11-05)
 
-Three projects. `/src-projects` is read-only, and anything kept is copied verbatim
+Four projects. `/src-projects` is read-only, and anything kept is copied verbatim
 into `vendor/` (provenance in `vendor/README.md`) and adapted in `src/` when the
 stage that needs it is built.
 
@@ -118,6 +118,24 @@ similarity: WavLM encoders, a contrastive sampler):
 It is a likely **downstream consumer** of this corpus: same-sentence groups across speakers
 are what `text_id` joins produce. Nothing in it does alignment or attribution.
 
+## 4. `librivox-mult-work-files/` (Jim's working repo; data, plus one notebook)
+
+Mostly data (see `docs/inputs.md`). The only code is
+`text/the-crocodile/parse_text.ipynb` (2026-02-26 to 03-03, branch `text`), a Stage 1
+prototype for *The Crocodile* (pg40745):
+- **Manual cut.** The Gutenberg HTML was split by hand into `text_01..04`, one per LibriVox
+  section. Numbering then restarts per file, i.e. per LibriVox **section**. CLAUDE.md wants
+  chapter/paragraph from the **text**.
+- **Paragraph = every top-level element with text.** `h2` title, `h3` subtitle, the
+  epigraph `div.blockquot`, chapter numerals ("I", "III") and `<p>` all count as
+  paragraphs. `span.pagenum` is removed, and `get_text(separator='')` avoids spaces around
+  inline tags. This is Jim's working answer to the open "paragraph-counting conventions"
+  question: everything counts, as its own paragraph.
+- **Sentences:** `mosestokenizer.MosesSentenceSplitter('en')`, then `rejoin_semicolons`
+  (rejoin a split ending in `;`). Output TSV `paragraph, sentence, text`.
+- **No character offsets, no quote spans, whitespace collapsed.** The output can't point
+  back into the source, so it doesn't meet the "never lose the source text" rule as it stands.
+
 ## Decisions: integrate / reuse / discard
 
 | Item | Decision | Reason |
@@ -140,3 +158,7 @@ are what `text_id` joins produce. Nothing in it does alignment or attribution.
 | `librivox-matching` `review_app/` | **Discard code, keep idea** | Bound to the old format. Our review tables are TSV/HTML under `/out/review/`; revisit if Jim wants an interactive tool |
 | `librivox-multispeaker` code remnants, `utterance-map.json` | **Discard** | No source present; VCTK/ARCTIC data, not LibriVox |
 | `librivox-multispeaker` Accents Table | **Keep as reference data** → `data/ref/librivox-wiki-accents-table.html` | Optional self-reported reader accent/location metadata for readers in the corpus |
+| work-files `respiro/` | **Integrate (as input data)** | Full-coverage breath intervals, read in place by Stage 0 (`asr.respiro`); a Stage 6 pause/breath cue |
+| work-files `whisperx/`, `vibevoice/`, `index*/` | **Discard (duplicates)** | Same as `/data`, except 2 VibeVoice files only on `main`. Ask Jim to add those to `/data` rather than read git blobs |
+| work-files `parse_text.ipynb` | **Reuse the conventions, rewrite the code** | Its paragraph rule (every top-level text element counts) and Moses + semicolon-rejoin splitter are the Stage 1 baseline. Needs char offsets, quote spans, text-based (not section-based) numbering, and no manual cutting |
+| work-files `pg40745-images.html`, `output_0N.tsv` | **Keep as Stage 1 test fixture/oracle** | The only Gutenberg HTML on hand. The TSVs give expected sentence splits to regress against |

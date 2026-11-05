@@ -158,8 +158,31 @@ def whisperx_info(path: Path) -> dict:
         return {"present": True, "path": str(path), "error": str(e)[:200]}
 
 
-def find_asr(data: Path, work: str, reading_dir: str, stem: str) -> dict:
+def respiro_info(path: Path) -> dict:
+    """Respiro breath detector: one JSON line {audio_file, breaths:[[start,end],...]}."""
+    if not path.exists():
+        return {"present": False}
+    try:
+        d = json.loads(path.read_text().splitlines()[0])
+        b = d["breaths"]
+        return {
+            "present": True,
+            "path": str(path),
+            "n_breaths": len(b),
+            "breath_time": round(sum(e - s for s, e in b), 3),
+            "first_starts_at_zero": bool(b and b[0][0] == 0.0),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"present": True, "path": str(path), "error": str(e)[:200]}
+
+
+RESPIRO_ROOT = Path("/src-projects/librivox-mult-work-files/respiro")
+
+
+def find_asr(data: Path, work: str, reading_dir: str, stem: str,
+             respiro_root: Path = RESPIRO_ROOT) -> dict:
     out = {"vibevoice": vibevoice_info(data / work / reading_dir / f"{stem}.json")}
+    out["respiro"] = respiro_info(respiro_root / work / reading_dir / f"{stem}.jsonl")
     out["whisperx"] = whisperx_info(data / "whisperx" / work / reading_dir / f"{stem}.json")
     # wav2vec2: layout unknown (directory empty at time of survey); look for any
     # file with this stem under /data/wav2vec2.
@@ -227,7 +250,8 @@ def reader_key(r: dict) -> str:
     return f"librivox:{r['id']}" if r.get("id") else f"name:{r['name']}"
 
 
-def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict]) -> list[dict]:
+def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
+                   respiro_root: Path = RESPIRO_ROOT) -> list[dict]:
     index = rdir / "index.html"
     page = parse_page(index.read_text(encoding="utf-8", errors="replace")) if index.exists() else None
     mp3s = sorted(rdir.glob("*.mp3"))
@@ -269,7 +293,7 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict]) 
             "channels": pr.get("channels"),
             "bit_rate": pr.get("bit_rate"),
             "probe_error": pr.get("error"),
-            "asr": find_asr(data, work, rdir.name, p.stem),
+            "asr": find_asr(data, work, rdir.name, p.stem, respiro_root),
         }
         for k in ("author", "source", "source_urls", "gutenberg_ids"):
             if sec and k in sec:
@@ -299,7 +323,7 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict]) 
                 if g not in gids:
                     gids.append(g)
         asr_counts = {
-            k: sum(1 for s in rows if s["asr"][k].get("present")) for k in ("wav2vec2", "whisperx", "vibevoice")
+            k: sum(1 for s in rows if s["asr"][k].get("present")) for k in ("wav2vec2", "whisperx", "vibevoice", "respiro")
         }
         durs = [s["duration"] for s in rows if s["duration"] is not None]
         cls = classify(page, rdir.name, len(readers), collection) if page else {
@@ -364,6 +388,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--work", action="append", help="limit to these work dirs (repeatable)")
     ap.add_argument("--reading", action="append", help="limit to these LibriVox slugs (repeatable)")
     ap.add_argument("--force", action="store_true", help="re-probe audio, ignore cache")
+    ap.add_argument("--respiro", type=Path, default=RESPIRO_ROOT,
+                    help="root of Respiro breath outputs (<work>/<slug>/<stem>.jsonl)")
     ap.add_argument("--jobs", type=int, default=min(16, (os.cpu_count() or 4)))
     a = ap.parse_args(argv)
 
@@ -386,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rows = []
     for w, r in rdirs:
-        rows.extend(survey_reading(a.data, w, r, probes))
+        rows.extend(survey_reading(a.data, w, r, probes, a.respiro))
     rows.sort(key=lambda x: (x["work"], x["reading_id"]))
 
     # partial runs update only their own rows in an existing inventory
@@ -417,7 +443,8 @@ def summarise(rows: list[dict]) -> dict:
         "n_files": len(secs),
         "hours": round(sum(r["duration"] for r in rows) / 3600, 1),
         "asr_files": {
-            k: sum(1 for s in secs if s["asr"][k].get("present")) for k in ("wav2vec2", "whisperx", "vibevoice")
+            k: sum(1 for s in secs if s["asr"][k].get("present"))
+            for k in ("wav2vec2", "whisperx", "vibevoice", "respiro")
         },
         "form": Counter(r.get("form") for r in rows),
         "dramatic": sum(1 for r in rows if r.get("dramatic")),
