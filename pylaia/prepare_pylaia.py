@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""
+Prepare PyLaia training data from split files.
+
+Produces for each split:
+  - <split>_ids.txt      : image paths (with split prefix), one per line
+  - <split>.txt          : image path + space-separated char transcription, one per line
+  - <split>_text.txt     : image path + plain text transcription, one per line
+  - syms.txt             : character-to-index mapping (generated from train split only)
+
+Word spaces in transcriptions are represented by the special symbol <space>.
+"""
+
+import argparse
+from collections import Counter
+from pathlib import Path
+
+
+SPACE_SYMBOL = "<space>"
+
+
+def transcription_to_chars(text):
+    tokens = []
+    for ch in text:
+        if ch == " ":
+            tokens.append(SPACE_SYMBOL)
+        else:
+            tokens.append(ch)
+    return tokens
+
+
+def read_split(split_file):
+    entries = []
+    with open(split_file, encoding="utf-8") as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            parts = line.split(" ", 1)
+            if len(parts) != 2:
+                print(f"WARNING: skipping malformed line {lineno}: {line!r}")
+                continue
+            filename, transcription = parts
+            stem = Path(filename).stem
+            entries.append((stem, transcription))
+    return entries
+
+
+def write_split(entries, outdir, split_name):
+    ids_path = outdir / f"{split_name}_ids.txt"
+    tok_path = outdir / f"{split_name}.txt"
+    text_path = outdir / f"{split_name}_text.txt"
+
+    with open(ids_path, "w", encoding="utf-8") as f_ids, \
+         open(tok_path, "w", encoding="utf-8") as f_tok, \
+         open(text_path, "w", encoding="utf-8") as f_text:
+        for stem, transcription in entries:
+            img_name = f"{split_name}/{stem}"
+            tokens = transcription_to_chars(transcription)
+            f_ids.write(img_name + "\n")
+            f_tok.write(img_name + " " + " ".join(tokens) + "\n")
+            f_text.write(img_name + " " + transcription + "\n")
+
+    print(f"{split_name:6s}: {len(entries)} lines")
+    print(f"         ids    -> {ids_path}")
+    print(f"         tokens -> {tok_path}")
+    print(f"         text   -> {text_path}")
+
+
+def build_syms(entries):
+    chars = Counter()
+    for _, transcription in entries:
+        chars.update(transcription.replace(" ", ""))
+    return sorted(chars.keys())
+
+
+def write_syms(symbols, outdir):
+    syms_path = outdir / "syms.txt"
+    with open(syms_path, "w", encoding="utf-8") as f:
+        f.write("<ctc> 0\n")
+        f.write(f"{SPACE_SYMBOL} 1\n")
+        for i, sym in enumerate(symbols, start=2):
+            f.write(f"{sym} {i}\n")
+    print(f"syms.txt: {len(symbols) + 2} symbols -> {syms_path}")
+    print(f"\nCharacter inventory ({len(symbols)} characters):")
+    for sym in symbols:
+        print(f"  U+{ord(sym):04X}  {sym}")
+    print()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Prepare PyLaia training data")
+    parser.add_argument("splits_dir", help="Directory containing train/val/test split files")
+    parser.add_argument("--outdir", required=True,
+                        help="Output directory for PyLaia data files")
+    args = parser.parse_args()
+
+    splits_dir = Path(args.splits_dir)
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    all_entries = {}
+    for split_name in ("train", "val", "test"):
+        split_file = splits_dir / f"{split_name}.txt"
+        if not split_file.exists():
+            print(f"WARNING: {split_file} not found, skipping")
+            continue
+        all_entries[split_name] = read_split(split_file)
+
+    if "train" not in all_entries:
+        print("ERROR: train.txt is required to build syms.txt")
+        return
+
+    symbols = build_syms(all_entries["train"])
+    write_syms(symbols, outdir)
+
+    for split_name, entries in all_entries.items():
+        write_split(entries, outdir, split_name)
+        print()
+
+    print("Done.")
+
+
+if __name__ == "__main__":
+    main()

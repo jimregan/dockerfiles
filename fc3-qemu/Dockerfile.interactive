@@ -1,0 +1,13 @@
+FROM fc3-installed
+
+COPY scripts/ /fc3/scripts/
+RUN chmod +x /fc3/scripts/*.sh
+
+COPY lab/ /www/labs/analysis/
+
+EXPOSE 6080
+EXPOSE 2222
+
+VOLUME ["/workspace"]
+
+CMD ["bash", "/fc3/scripts/run-interactive.sh"]

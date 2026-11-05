@@ -1,0 +1,33 @@
+services:
+
+  interactive:
+    build:
+      context: .
+      dockerfile: Dockerfile.interactive
+    image: fc3-interactive
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+      - "2222:2222"
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+      - ./rpmbuild:/rpmbuild
+
+
+  final:
+    build:
+      context: .
+      dockerfile: Dockerfile.final
+    image: fc3-final
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm
+    ports:
+      - "6080:6080"
+      - "2222:2222"
+      - "8000:8000"
+    profiles:
+      - final
