@@ -158,7 +158,7 @@ prototype for *The Crocodile* (pg40745):
 | `librivox-matching` `review_app/` | **Discard code, keep idea** | Bound to the old format. Our review tables are TSV/HTML under `/out/review/`; revisit if Jim wants an interactive tool |
 | `librivox-multispeaker` code remnants, `utterance-map.json` | **Discard** | No source present; VCTK/ARCTIC data, not LibriVox |
 | `librivox-multispeaker` Accents Table | **Keep as reference data** → `data/ref/librivox-wiki-accents-table.html` | Optional self-reported reader accent/location metadata for readers in the corpus |
-| work-files `respiro/` | **Integrate (as input data)** | Full-coverage breath intervals, read in place by Stage 0 (`asr.respiro`); a Stage 6 pause/breath cue |
+| work-files `respiro/` | **Integrate (as input data)** | Full-coverage breath intervals, read in place by Stage 0 (`asr.respiro`). Jim calls it a dead end, so it is used only to confirm sentence-end boundaries it agrees with |
 | work-files `whisperx/`, `vibevoice/`, `index*/` | **Discard (duplicates)** | Same as `/data`, except 2 VibeVoice files only on `main`. Ask Jim to add those to `/data` rather than read git blobs |
 | work-files `parse_text.ipynb` | **Reuse the conventions, rewrite the code** | Its paragraph rule (every top-level text element counts) and Moses + semicolon-rejoin splitter are the Stage 1 baseline. Needs char offsets, quote spans, text-based (not section-based) numbering, and no manual cutting |
 | work-files `pg40745-images.html`, `output_0N.tsv` | **Keep as Stage 1 test fixture/oracle** | The only Gutenberg HTML on hand. The TSVs give expected sentence splits to regress against |

@@ -133,11 +133,11 @@ Respiro notes:
 - 1,335 files have a first interval starting at 0.0 s (median end 0.70 s). This may be
   leading silence or room tone detected as a breath, so check it before using it as a
   pause cue.
-- 73 files have **no breaths**. They cluster by reading: `lv14329` (18 files),
-  `lv356`/`lv6263` (6 each), `lv8149`/`lv2994` (5 each), aesop volumes. Some are 31 min
-  long. That suggests readers who edited breaths out, which is a reading-level property
-  and itself useful for Stage 6.
-- What exactly "Respiro" is (model, threshold) isn't recorded in the repo. **Ask.**
+- 73 files have **no breaths**. They cluster by reading (`lv14329` has 18 files; others
+  are `lv356`, `lv6263`, `lv8149`, `lv2994` and the aesop volumes).
+- **Status (Jim, 2026-11-05): a dead end.** Respiro is used only as a confirming vote
+  when a breath agrees with a sentence-end boundary (see `docs/decisions.md`). It is not
+  used for pause measurement or segmentation, and no further investigation is planned.
 
 Still absent: wav2vec2 output, Gutenberg HTML (except pg40745), and the index page for Secret Garden reading 2.
 

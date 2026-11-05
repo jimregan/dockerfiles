@@ -8,4 +8,5 @@
 - 2026-11-05: Kept code is vendored verbatim under `vendor/` with provenance; adaptation happens in `src/` at the consuming stage (see `docs/existing-code.md`).
 - 2026-11-05: Kaldi SW aligner is reused but must be made global over the reference (flanking ref words currently vanish instead of becoming `del`).
 - 2026-11-05: Respiro breath outputs are read in place from `/src-projects/librivox-mult-work-files/respiro` (`--respiro` to override) and recorded as `asr.respiro`.
+- 2026-11-05: Respiro is a dead end as a pause/segmentation source (Jim). It is used only as confirmation: a breath interval that agrees with a sentence-end candidate boundary raises confidence in that boundary; it never creates, moves, or vetoes a boundary.
 - 2026-11-05: Duplicated WhisperX/VibeVoice/index data in the work-files repo is ignored; `/data` stays the source of truth.
