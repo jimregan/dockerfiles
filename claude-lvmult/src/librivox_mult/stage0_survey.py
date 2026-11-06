@@ -176,6 +176,10 @@ def respiro_info(path: Path) -> dict:
         return {"present": True, "path": str(path), "error": str(e)[:200]}
 
 
+EXCLUSIONS_FILE = Path(__file__).resolve().parents[2] / "data" / "exclusions.json"
+EXCLUSIONS: dict[str, str] = (json.loads(EXCLUSIONS_FILE.read_text())["files"]
+                              if EXCLUSIONS_FILE.exists() else {})
+
 RESPIRO_ROOT = Path("/src-projects/librivox-mult-work-files/respiro")
 
 
@@ -293,6 +297,8 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
             # e.g. Monte Cristo "..., alternate version": a second reader's
             # recording of the same chapter inside one project
             "alternate": bool(sec and re.search(r"(?i)\balternate\b", sec["title"])),
+            # data/exclusions.json: files judged unusable (later stages skip them)
+            "excluded": EXCLUSIONS.get(str(p.relative_to(data))),
             "readers": sec["readers"] if sec else [],
             "listed_time": sec["time"] if sec else None,
             "duration": pr.get("duration"),
@@ -468,6 +474,7 @@ def summarise(rows: list[dict]) -> dict:
         "sampling_rates": Counter(s["sampling_rate"] for s in secs),
         "channels": Counter(s["channels"] for s in secs),
         "probe_errors": [s["path"] for s in secs if s["probe_error"]],
+        "excluded_files": {s["path"]: s["excluded"] for s in secs if s.get("excluded")},
         "readings_with_issues": {r["reading_id"]: r["issues"] for r in rows if r["issues"]},
     }
 

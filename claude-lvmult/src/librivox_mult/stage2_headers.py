@@ -36,7 +36,7 @@ from rapidfuzz.fuzz import partial_ratio_alignment
 
 from .spoken import letters, number_variants, roman_to_int, spoken_words
 
-VERSION = "stage2-0.12"
+VERSION = "stage2-0.13"
 log = logging.getLogger("stage2")
 
 DISCLAIMER_LONG = ("This is a LibriVox recording. All LibriVox recordings are in the public domain. "
@@ -317,6 +317,11 @@ def process_reading(args) -> dict:
     for i, s in enumerate(secs):
         is_last = i == last_idx and (not reading.get("collection")) and (
             section_number(s["section"]) == section_number(listed_last) or reading.get("n_sections_listed") == len(secs))
+        if s.get("excluded"):  # data/exclusions.json
+            out["sections"].append({"section": s["section"], "stem": s["stem"], "title": s["title"],
+                                    "duration": s["duration"], "excluded": s["excluded"], "templates": [],
+                                    "matches": []})
+            continue
         els = templates_for(reading, s, is_last)
         p = w2v_root / reading["work"] / reading["librivox_slug"] / f"{s['stem']}.json"
         rec = {"section": s["section"], "stem": s["stem"], "title": s["title"], "duration": s["duration"],
@@ -382,6 +387,9 @@ def write_review(rdir: Path, readings: list[dict]) -> None:
         h.write("reading_id\tsection\tcharacter\treader\tfound\tscore\thyp\tafter_verb\n")
         for r in readings:
             for s in r["sections"]:
+                if s.get("excluded"):
+                    stats["excluded"] += 1
+                    continue
                 fl = section_flags(s)
                 stats["sections"] += 1
                 stats[f"disclaimer_{fl['disclaimer']}"] += 1
