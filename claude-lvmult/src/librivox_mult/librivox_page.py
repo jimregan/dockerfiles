@@ -40,6 +40,10 @@ def mp3_basename(url: str) -> str:
     return PurePosixPath(unquote(urlparse(url).path)).name
 
 
+POOL_RE = re.compile(r"(?i)\b(minor|other|additional|various|remaining|supporting)\b.*\b(characters?|parts?|roles?|voices?)\b"
+                     r"|\b(?:read|played)\s+by\s*$")
+
+
 def parse_cast(desc: Tag) -> list[dict]:
     """Parse a ``Cast List:`` block from the description paragraph.
 
@@ -98,6 +102,9 @@ def parse_cast(desc: Tag) -> list[dict]:
             name = reader_part.strip()
             readers = [{"name": name, "id": None}] if name else []
         entry = {"roles": roles, "readers": readers, "raw": raw}
+        if POOL_RE.search(roles_part):
+            # "Minor characters read by: a, b, c" is a pool of readers, not a character
+            entry["pool"] = True
         if group:
             entry["group"] = group
         cast.append(entry)

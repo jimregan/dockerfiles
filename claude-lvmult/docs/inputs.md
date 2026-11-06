@@ -109,9 +109,19 @@ bracketed content: `[Noise]` 2,072, `[Music]` 1,102, `[Silence]` 817,
 - Timing is coarse: the first WhisperX word starts a median 0.7 s after the first VibeVoice
   segment (p90 1.7 s), over 200 sampled files.
 
-**wav2vec2:** none. The worker's HF cache has `facebook/wav2vec2-large-960h-lv60-self`
-(the SETUP.md default, which uses an upper-case letter vocabulary with `'` and `|`), but
-nothing records that this model was the one used, and there are no outputs. **Ask.**
+**wav2vec2:** regenerated 2026-11-06 with `facebook/wav2vec2-large-960h-lv60-self`
+(`stage_w2v`, see docs/decisions.md): `/out/w2v/<work>/<slug>/<stem>.{json,logp.npy}` for
+all 5,442 files (1,578 h in 3.2 h on the 3090, 493× realtime; 20 GB). Checks:
+- frame counts match the decoded durations for every file;
+- word count vs WhisperX: median ratio 1.019 (p1 0.999, p99 1.19).
+
+**WhisperX drops the LibriVox disclaimer in 56% of files.** The spoken "This is a LibriVox
+recording…" appears in the wav2vec2 output but not in WhisperX's for 3,006 of 5,326
+files. Only 13 show the reverse, and 2,293 have it in both. In those files WhisperX
+still times its first word from about 0 s, so it has forced its text over the
+disclaimer audio. Its word times near the start of a file are therefore unreliable,
+and **WhisperX cannot be used for header/footer alignment or as a vote on header
+segments.** This also explains the 35 files where wav2vec2 has far more words.
 
 ## `/src-projects/librivox-mult-work-files` (Jim's working repo, git)
 
