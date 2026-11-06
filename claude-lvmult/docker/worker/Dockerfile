@@ -49,7 +49,7 @@ COPY requirements.txt /tmp/requirements.txt
 COPY constraints.txt /tmp/constraints.txt
 RUN uv venv /opt/venv --python 3.11 \
     && uv pip install --python /opt/venv/bin/python \
-        torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124 \
+        torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu126 \
     && uv pip install --python /opt/venv/bin/python -r /tmp/requirements.txt -c /tmp/constraints.txt \
     && chmod -R a+rX /opt/python /opt/venv
 
