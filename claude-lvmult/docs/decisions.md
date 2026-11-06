@@ -32,3 +32,4 @@
 - 2026-11-06: `{chapter}` in IDs is `{chapter:03d}` (Jim); texts with >99 divisions exist.
 - 2026-11-06: Stage 2 locates header/footer template elements in the wav2vec2 transcript by fuzzy best-substring matching (rapidfuzz) on space-free letters; it records what was found where and the unmatched ad-libs. Exact header/footer alignment is Stage 5; H/F segment IDs are assigned in Stage 7 in spoken order.
 - 2026-11-06: Cast entries like "Minor characters read by: a, b, c" are reader pools (`pool: true` in the index parse), not characters.
+- 2026-11-06: Unusable audio is listed in data/exclusions.json (path relative to /data, reason, who). Stage 0 marks the section `excluded`; later stages skip it. First entry: lv229 sonnets_17_shakespeare (junk, Jim).
