@@ -1,6 +1,7 @@
 {
   "_doc": "Audio files excluded from the corpus, keyed by path relative to /data, with the reason and who decided. Stage 0 marks them `excluded`; later stages skip them.",
   "files": {
-    "shakespeares-sonnets/sonnets-by-william-shakespeare/sonnets_17_shakespeare.mp3": "junk audio; wav2vec2 output is gibberish (Jim, 2026-11-06)"
+    "shakespeares-sonnets/sonnets-by-william-shakespeare/sonnets_17_shakespeare.mp3": "junk audio; wav2vec2 output is gibberish (Jim, 2026-11-06)",
+    "shakespeares-sonnets/sonnets-by-william-shakespeare/sonnets_16_shakespeare.mp3": "junk audio; wav2vec2 output is gibberish (Jim, 2026-11-06)"
   }
 }

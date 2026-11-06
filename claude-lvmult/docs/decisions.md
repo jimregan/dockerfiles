@@ -33,3 +33,7 @@
 - 2026-11-06: Stage 2 locates header/footer template elements in the wav2vec2 transcript by fuzzy best-substring matching (rapidfuzz) on space-free letters; it records what was found where and the unmatched ad-libs. Exact header/footer alignment is Stage 5; H/F segment IDs are assigned in Stage 7 in spoken order.
 - 2026-11-06: Cast entries like "Minor characters read by: a, b, c" are reader pools (`pool: true` in the index parse), not characters.
 - 2026-11-06: Unusable audio is listed in data/exclusions.json (path relative to /data, reason, who). Stage 0 marks the section `excluded`; later stages skip it. First entry: lv229 sonnets_17_shakespeare (junk, Jim).
+- 2026-11-06: Verse inside prose chapters is identified through the poem hierarchy in both S and L segmentations, not by paragraph (Jim).
+- 2026-11-06: lv229 sonnets_16_shakespeare also excluded (Jim).
+- 2026-11-06: Stage 1 poem review closed: verse found from <br> line breaks is accepted as is (Jim: "<br> markup is expected"). Stage 1 is frozen at VERSION stage1-0.5 with no overrides; any later change to the parser or data/stage1_overrides.json can renumber IDs.
+- 2026-11-06: VibeVoice re-run: files are cut into pieces of at most 30 min (Jim: the longest that worked was ~45 min; 30 to be safe), at silences from wav2vec2 word gaps, then stitched back onto the recording timeline.

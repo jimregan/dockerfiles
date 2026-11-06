@@ -22,9 +22,9 @@ Stability: IDs are a deterministic function of the source HTML (sha256), the Sta
 `VERSION` and `data/stage1_overrides.json`. Changing any of these can renumber, so they
 are pinned in each Stage 1 output's `meta` and must be frozen for a release.
 
-Open:
-- Prose and verse in one division (poems inside a prose chapter): the stanzas have both a
-  `{para}` (prose hierarchy) and `{poem}/{stanza}` IDs. Which does the `S` segmentation use?
+Verse inside prose (poems in a prose chapter): the stanzas have both a `{para}` and
+`{poem}/{stanza}` position. Sentences of verse use the **poem** hierarchy
+(`{text}/{poem}/s{n:02d}`), lines `{text}/{poem}/{stanza:02d}/{line:02d}` (Jim, 2026-11-06).
 
 ## Reading side (supervision `id`)
 
