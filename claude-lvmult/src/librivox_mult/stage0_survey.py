@@ -209,7 +209,9 @@ def is_multiversion(page: dict) -> bool:
     secs = page["sections"]
     if len(secs) < 2:
         return False
-    titles = {norm_title(re.sub(r"\(.*?\)", "", s["title"])) for s in secs}
+    # "IF - Read by ADR" / "If (read by X)": the reader credit is not part of the title
+    titles = {norm_title(re.sub(r"\s*[-–—:(]*\s*read by\b.*$|\(.*?\)", "", s["title"], flags=re.I))
+              for s in secs}
     readers = {tuple(r["id"] or r["name"] for r in s["readers"]) for s in secs}
     return len(titles) == 1 and len(readers) == len(secs)
 
@@ -389,7 +391,8 @@ def survey_reading(data: Path, work: str, rdir: Path, probes: dict[Path, dict],
             r["multiversion"] = True
             out.append(r)
         return out
-    if page and "source" in page.get("section_columns", []) and sections_local:
+    if (page and "source" in page.get("section_columns", []) and sections_local
+            and len(sections_local) < len(page["sections"])):
         # Collections: one LibriVox project appears under several works with a
         # different downloaded section each, so the section is part of the id.
         secs = "+".join(sorted({(x["section"] or x["stem"]).zfill(2) for x in sections_local}))

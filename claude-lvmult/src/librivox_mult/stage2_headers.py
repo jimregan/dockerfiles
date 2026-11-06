@@ -24,6 +24,7 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import re
@@ -302,10 +303,17 @@ def match_section(els: list[dict], words: list[dict], dur: float, cast_section: 
 
 
 # --------------------------------------------------------------------------- driver
+def row_sha(reading: dict) -> str:
+    """Hash of the reading's inventory row: outputs are recomputed when it changes
+    (e.g. a section newly excluded, a page added)."""
+    return hashlib.sha256(json.dumps(reading, sort_keys=True).encode()).hexdigest()[:16]
+
+
 def process_reading(args) -> dict:
     reading, w2v_root, out_root = args
     secs = reading["sections"]
-    out = {"version": VERSION, "reading_id": reading["reading_id"], "work": reading["work"],
+    out = {"version": VERSION, "input_sha": row_sha(reading),
+           "reading_id": reading["reading_id"], "work": reading["work"],
            "librivox_slug": reading["librivox_slug"], "librivox_id": reading["librivox_id"],
            "title": reading["title"], "title_clean": clean_title(reading["title"] or ""),
            "authors": reading["authors"], "translator": translator(reading.get("credits_line") or ""),
@@ -446,7 +454,7 @@ def main(argv: list[str] | None = None) -> int:
         dst = out_root / r["work"] / f"{r['reading_id'].replace(':', '_')}.json"
         if dst.exists() and not a.force:
             d = json.loads(dst.read_text())
-            if d.get("version") == VERSION:
+            if d.get("version") == VERSION and d.get("input_sha") == row_sha(r):
                 done.append(d)
                 continue
         todo.append((r, a.out / "w2v", out_root))
