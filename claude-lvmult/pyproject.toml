@@ -1,0 +1,26 @@
+[project]
+name = "librivox-mult"
+version = "0.0.1"
+description = "LibriVox multi-reading corpus: alignment and speaker attribution"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "lxml>=5",
+    "numpy>=1.26",
+]
+
+[project.scripts]
+lvm-survey = "librivox_mult.stage0_survey:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/librivox_mult"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

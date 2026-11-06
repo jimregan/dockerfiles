@@ -1,0 +1,5 @@
+# Keep the CUDA build of torch installed from the PyTorch index. Without this,
+# unpinned deps in requirements.txt upgraded torch to a PyPI cu132 wheel that the
+# host driver (CUDA 12.6) cannot run. uv resolves the other packages against these pins.
+torch==2.5.1
+torchaudio==2.5.1
