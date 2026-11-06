@@ -32,6 +32,7 @@ ARG GID=1000
 RUN apt-get update && apt-get install -y --no-install-recommends \
         openssh-server tmux git curl ca-certificates jq less procps \
         ffmpeg sox libsndfile1 libgfortran5 python3 perl gawk \
+        build-essential pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=kaldi /opt/kaldi /opt/kaldi
@@ -45,10 +46,11 @@ RUN groupadd -o -g "${GID}" agent \
 # Python env (heavy, slow-changing deps only; project code lives in /work)
 ENV UV_PYTHON_INSTALL_DIR=/opt/python
 COPY requirements.txt /tmp/requirements.txt
+COPY constraints.txt /tmp/constraints.txt
 RUN uv venv /opt/venv --python 3.11 \
     && uv pip install --python /opt/venv/bin/python \
         torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124 \
-    && uv pip install --python /opt/venv/bin/python -r /tmp/requirements.txt \
+    && uv pip install --python /opt/venv/bin/python -r /tmp/requirements.txt -c /tmp/constraints.txt \
     && chmod -R a+rX /opt/python /opt/venv
 
 # Environment for SSH sessions (sshd doesn't inherit Docker ENV; PAM reads this)
