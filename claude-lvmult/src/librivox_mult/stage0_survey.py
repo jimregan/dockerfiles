@@ -38,7 +38,6 @@ VERSE_GENRES = {"poetry", "sonnets", "multi-version (weekly and fortnightly poet
 PLAY_GENRES = {"plays", "drama", "comedy", "tragedy"}
 
 
-# --------------------------------------------------------------------------- probe
 def ffprobe(path: Path) -> dict:
     cmd = [
         "ffprobe", "-v", "error", "-show_entries",
@@ -111,7 +110,6 @@ class ProbeCache:
         return {p: self.data[self.key(p)] for p in paths}
 
 
-# --------------------------------------------------------------------------- ASR
 def vibevoice_info(path: Path) -> dict:
     """VibeVoice output: JSON list of {Start, End, Content, Speaker}."""
     if not path.exists():
@@ -198,7 +196,6 @@ def find_asr(data: Path, work: str, reading_dir: str, stem: str,
     return out
 
 
-# --------------------------------------------------------------------------- classify
 def norm_title(t: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
 
@@ -210,10 +207,11 @@ def is_multiversion(page: dict) -> bool:
     if len(secs) < 2:
         return False
     # "IF - Read by ADR" / "If (read by X)": the reader credit is not part of the title
-    titles = {norm_title(re.sub(r"\s*[-–—:(]*\s*read by\b.*$|\(.*?\)", "", s["title"], flags=re.I))
-              for s in secs}
+    titles = Counter(norm_title(re.sub(r"\s*[-–—:(]*\s*read by\b.*$|\(.*?\)", "", s["title"], flags=re.I))
+                     for s in secs)
     readers = {tuple(r["id"] or r["name"] for r in s["readers"]) for s in secs}
-    return len(titles) == 1 and len(readers) == len(secs)
+    # >=80% sharing one title tolerates page typos ("IIF - Read by ...")
+    return titles.most_common(1)[0][1] >= 0.8 * len(secs) and len(readers) == len(secs)
 
 
 def classify(page: dict, slug: str, n_readers: int, collection: bool = False) -> dict:
@@ -241,7 +239,6 @@ def classify(page: dict, slug: str, n_readers: int, collection: bool = False) ->
     }
 
 
-# --------------------------------------------------------------------------- survey
 def match_section(mp3: str, sections: list[dict]) -> dict | None:
     def base(n: str) -> str:
         return re.sub(r"_(64|128)kb(?=\.mp3$)", "", n.lower())

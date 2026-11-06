@@ -58,7 +58,6 @@ ACCEPT = 80.0          # partial-ratio score to accept a match
 ACCEPT_SHORT = 90.0    # for needles under 15 letters (e.g. "end of chapter two")
 
 
-# --------------------------------------------------------------------------- metadata
 def clean_title(t: str) -> str:
     t = re.sub(r"\s*\((?:[^)]*?(?:version|dramatic|abridged|condensed|ver\.?)\s*\d*[^)]*)\)", "", t, flags=re.I)
     t = re.sub(r"\s*,?\s*\b(?:version|ver\.?)\s*\d+\b", "", t, flags=re.I)
@@ -107,7 +106,6 @@ def section_number(sec: str | None) -> int | None:
         return None
 
 
-# --------------------------------------------------------------------------- templates
 def element(kind: str, role: str, variants: list[str], **extra) -> dict:
     vs = []
     for v in variants:
@@ -182,7 +180,6 @@ def templates_for(reading: dict, sec: dict, is_last: bool) -> list[dict]:
     return [e for e in els if e["variants"]]
 
 
-# --------------------------------------------------------------------------- matching
 def locate(needle: str, words: list[dict], lo: int, hi: int) -> tuple[float, int, int] | None:
     """Best fuzzy occurrence of ``needle`` (letters) in words[lo:hi] -> (score, w0, w1)."""
     if hi <= lo or not needle:
@@ -302,7 +299,6 @@ def match_section(els: list[dict], words: list[dict], dur: float, cast_section: 
     }
 
 
-# --------------------------------------------------------------------------- driver
 def row_sha(reading: dict) -> str:
     """Hash of the reading's inventory row: outputs are recomputed when it changes
     (e.g. a section newly excluded, a page added)."""
@@ -446,8 +442,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s",
                         handlers=[logging.FileHandler(a.out / "logs" / "stage2.log"), logging.StreamHandler(sys.stderr)])
     out_root = a.out / "stage2"
-    readings = [json.loads(x) for x in a.inventory.read_text().splitlines()]
-    sel = [r for r in readings if (not a.work or r["work"] in a.work)
+    rows = [json.loads(x) for x in a.inventory.read_text().splitlines()]
+    sel = [r for r in rows if (not a.work or r["work"] in a.work)
            and (not a.reading or r["librivox_slug"] in a.reading)]
     todo, done = [], []
     for r in sel:
@@ -464,6 +460,12 @@ def main(argv: list[str] | None = None) -> int:
             done.append(d)
     done.sort(key=lambda d: (d["work"], d["reading_id"]))
     # review tables cover everything on disk, not only this run's selection
+    # drop outputs of readings that no longer exist (reading ids change when e.g. a
+    # multi-version project is split), so review tables don't mix old and new
+    live = {(r["work"], r["reading_id"].replace(":", "_")) for r in rows}
+    for p in out_root.glob("*/*.json"):
+        if (p.parent.name, p.stem) not in live:
+            p.unlink()
     all_out = [json.loads(p.read_text()) for p in sorted(out_root.glob("*/*.json"))]
     write_review(a.out / "review" / "stage2", sorted(all_out, key=lambda d: (d["work"], d["reading_id"])))
     log.info("wrote %d readings", len(done))

@@ -79,7 +79,6 @@ TOC_HEADING = re.compile(r"^\s*(table of )?contents\.?\s*$|^\s*(list of )?illust
 WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*")
 
 
-# --------------------------------------------------------------------------- HTML
 def classes(el: Tag) -> str:
     c = el.get("class") or []
     return " ".join(c) if isinstance(c, list) else str(c)
@@ -357,7 +356,6 @@ def find_blocks(soup: BeautifulSoup, overrides: dict | None = None) -> tuple[lis
     return blocks, {"chars_total": total, "chars_covered": covered, "uncovered": uncovered}
 
 
-# --------------------------------------------------------------------------- sentences
 class Splitter:
     """Moses sentence splitter + rejoin of splits ending in ';' (Jim's prototype)."""
 
@@ -410,7 +408,6 @@ def locate(text: str, start: int, end: int, pieces: list[str]) -> list[tuple[int
     return spans if i == end else None
 
 
-# --------------------------------------------------------------------------- quotes
 OPEN_D, CLOSE_D = "“", "”"
 OPEN_S, CLOSE_S = "‘", "’"
 
@@ -454,7 +451,6 @@ def find_quotes(text: str, start: int, end: int) -> list[dict]:
     return sorted(out, key=lambda q: (q["start"], -q["end"]))
 
 
-# --------------------------------------------------------------------------- build
 def build(html: str, splitter: Splitter, overrides: dict | None = None) -> dict:
     soup = BeautifulSoup(html, "lxml")
     raw, coverage = find_blocks(soup, overrides)
@@ -637,7 +633,6 @@ def build(html: str, splitter: Splitter, overrides: dict | None = None) -> dict:
     }
 
 
-# --------------------------------------------------------------------------- review
 def _c(x) -> str:
     """TSV-safe cell."""
     return re.sub(r"[\t\r\n]+", " / ", str(x if x is not None else ""))
@@ -723,7 +718,6 @@ def write_poems_html(path: Path, results: dict[int, dict]) -> None:
     path.write_text("\n".join(out), encoding="utf-8")
 
 
-# --------------------------------------------------------------------------- CLI
 def select_ids(a) -> list[int]:
     if a.id:
         return sorted(set(a.id))

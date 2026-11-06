@@ -46,7 +46,6 @@ RECEPTIVE = 400  # samples in the first output frame's receptive field
 log = logging.getLogger("w2v")
 
 
-# --------------------------------------------------------------------------- audio
 def load_audio(path: str | Path) -> np.ndarray:
     """Decode with ffmpeg (same decoder as Stage 0) to 16 kHz mono float32."""
     p = subprocess.run(
@@ -59,7 +58,6 @@ def load_audio(path: str | Path) -> np.ndarray:
     return np.frombuffer(p.stdout, dtype=np.float32)
 
 
-# --------------------------------------------------------------------------- windows
 def n_frames(n_samples: int) -> int:
     """Output frames wav2vec2's conv encoder produces for ``n_samples``."""
     return 0 if n_samples < RECEPTIVE else (n_samples - RECEPTIVE) // HOP + 1
@@ -90,7 +88,6 @@ def plan_windows(n_samples: int, chunk_s: float, context_s: float) -> list[dict]
     return wins
 
 
-# --------------------------------------------------------------------------- decoding
 def greedy_ctc(logp: np.ndarray, id2tok: dict[int, str], blank: int = 0,
                delim: str = "|") -> tuple[list[list], list[dict]]:
     """Greedy CTC: argmax, collapse repeats, drop blanks.
@@ -138,7 +135,6 @@ def greedy_ctc(logp: np.ndarray, id2tok: dict[int, str], blank: int = 0,
     return tokens, words
 
 
-# --------------------------------------------------------------------------- model
 class Recogniser:
     def __init__(self, device: str, batch_size: int):
         import torch
@@ -179,7 +175,6 @@ class Recogniser:
         return out
 
 
-# --------------------------------------------------------------------------- driver
 def params(a) -> dict:
     return {"model": MODEL_ID, "revision": MODEL_REVISION, "decoder": "greedy-ctc",
             "chunk_s": a.chunk, "context_s": a.context, "sampling_rate": SR,
