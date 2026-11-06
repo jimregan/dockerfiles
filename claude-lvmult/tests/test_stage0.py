@@ -136,3 +136,10 @@ def test_survey_one_reading_end_to_end(tmp_path):
     first = (tmp_path / "inventory.jsonl").read_bytes()
     assert s0.main(["--out", str(tmp_path), "--reading", rd]) == 0
     assert (tmp_path / "inventory.jsonl").read_bytes() == first
+
+
+@pytest.mark.skipif(not Path("/data").exists(), reason="needs /data")
+def test_exclusions_point_at_real_files():
+    # a typo in data/exclusions.json would otherwise silently exclude nothing
+    for rel in s0.EXCLUSIONS:
+        assert (Path("/data") / rel).is_file(), rel
