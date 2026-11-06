@@ -31,6 +31,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -185,15 +186,18 @@ def params(a) -> dict:
             "frame_shift": FRAME_SHIFT}
 
 
-def is_done(json_path: Path, prm: dict) -> bool:
-    if not json_path.exists() or not json_path.with_suffix(".logp.npy").exists():
-        return False
-    try:
-        with json_path.open() as f:
-            head = json.load(f)
-        return all(head.get(k) == v for k, v in prm.items())
-    except Exception:  # noqa: BLE001
-        return False
+def logp_path(json_path: Path) -> Path:
+    return json_path.with_name(json_path.name[: -len(".json")] + ".logp.npy")
+
+
+def is_done(json_path: Path) -> bool:
+    """Resumable: a file is done when both outputs exist.
+
+    Both are written atomically (tmp + rename), logp first, then json, so an
+    interrupted file has no json and is redone. Use --force to recompute
+    (e.g. after changing model or windowing parameters).
+    """
+    return json_path.exists() and logp_path(json_path).exists()
 
 
 def atomic_write_bytes(path: Path, write) -> None:
@@ -214,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--device", default=None, help="cuda / cpu (default: cuda if available)")
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--decoders", type=int, default=4, help="parallel ffmpeg decode threads")
     ap.add_argument("--chunk", type=float, default=30.0, help="window core, seconds")
     ap.add_argument("--context", type=float, default=5.0, help="context each side, seconds")
     a = ap.parse_args(argv)
@@ -240,10 +245,11 @@ def main(argv: list[str] | None = None) -> int:
             seen.add(s["path"])
             dst = a.out / "w2v" / r["work"] / r["librivox_slug"] / f"{s['stem']}.json"
             jobs.append((s, dst))
-    todo = [(s, d) for s, d in jobs if a.force or not is_done(d, prm)]
+    todo = [(s, d) for s, d in jobs if a.force or not is_done(d)]
     if a.limit:
         todo = todo[: a.limit]
-    log.info("%d files selected, %d to do", len(jobs), len(todo))
+    log.info("%d files selected, %d already done, %d to do",
+             len(jobs), len(jobs) - len([1 for s, d in jobs if a.force or not is_done(d)]), len(todo))
     if not todo:
         return 0
 
@@ -253,11 +259,25 @@ def main(argv: list[str] | None = None) -> int:
     if device == "cpu":
         log.warning("running on CPU")
     rec = Recogniser(device, a.batch_size)
-    t_audio = t_wall = 0.0
+    t_audio = 0.0
+    # ffmpeg decoding/resampling is ~60% of per-file time on the GPU, so decode
+    # ahead in threads (bounded look-ahead keeps memory to a few files of audio).
+    pool = ThreadPoolExecutor(max_workers=a.decoders)
+    pending: dict[int, object] = {}
+
+    def prefetch(i: int) -> None:
+        if i < len(todo) and i not in pending:
+            pending[i] = pool.submit(load_audio, todo[i][0]["path"])
+
+    for i in range(a.decoders + 1):
+        prefetch(i)
+    t_start = time.time()
     for n, (s, dst) in enumerate(todo, 1):
         t0 = time.time()
+        fut = pending.pop(n - 1)
+        prefetch(n + a.decoders)
         try:
-            audio = load_audio(s["path"])
+            audio = fut.result()
             logp = rec.logprobs(audio, a.chunk, a.context)
             tokens, words = greedy_ctc(logp, rec.id2tok, rec.blank)
         except Exception as e:  # noqa: BLE001 - log and continue with the next file
@@ -265,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         dur = len(audio) / SR
         dst.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_bytes(dst.with_suffix(".logp.npy"), lambda f: np.save(f, logp))
+        atomic_write_bytes(logp_path(dst), lambda f: np.save(f, logp))
         rec_out = {**prm, "vocab": rec.vocab, "blank": rec.blank, "audio": s["path"],
                    "duration_16k": round(dur, 6), "n_frames": int(logp.shape[0]),
                    "device": device, "torch": torch.__version__,
@@ -273,11 +293,12 @@ def main(argv: list[str] | None = None) -> int:
         atomic_write_bytes(dst, lambda f: f.write(json.dumps(rec_out, ensure_ascii=False).encode()))
         el = time.time() - t0
         t_audio += dur
-        t_wall += el
         log.info("[%d/%d] %s %.0fs audio in %.1fs (%.0fx) %d words",
                  n, len(todo), s["stem"], dur, el, dur / max(el, 1e-9), len(words))
-    log.info("done: %.1f h audio in %.1f h wall (%.0fx)", t_audio / 3600, t_wall / 3600,
-             t_audio / max(t_wall, 1e-9))
+    pool.shutdown()
+    wall = time.time() - t_start  # true elapsed; per-file times exclude overlapped decoding
+    log.info("done: %.2f h audio in %.2f h wall (%.0fx realtime)", t_audio / 3600, wall / 3600,
+             t_audio / max(wall, 1e-9))
     return 0
 
 

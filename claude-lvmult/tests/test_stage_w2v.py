@@ -51,3 +51,15 @@ def test_greedy_ctc_collapse_and_words():
 
 def test_greedy_ctc_empty():
     assert w.greedy_ctc(np.zeros((0, 4), dtype=np.float32), {}, 0) == ([], [])
+
+
+def test_is_done_requires_both_outputs(tmp_path):
+    j = tmp_path / "a.b_128kb.json"
+    assert w.logp_path(j).name == "a.b_128kb.logp.npy"
+    assert not w.is_done(j)
+    j.write_text("{}")
+    assert not w.is_done(j)  # json alone (should not happen; logp is written first)
+    w.logp_path(j).write_bytes(b"x")
+    assert w.is_done(j)
+    j.unlink()
+    assert not w.is_done(j)  # interrupted after logp, before json: redo
