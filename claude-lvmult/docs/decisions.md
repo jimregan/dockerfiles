@@ -1,0 +1,35 @@
+# Decisions (dated, one line each)
+
+- 2026-11-05: A *reading* is one LibriVox project dir; multi-version projects are split one reading per section; collections key on project+section.
+- 2026-11-05: Inventory `reading_id` (`lv<id>[-s<sec>]`) is a survey key only; supervision `{reader}` IDs are deferred to `docs/ids.md`.
+- 2026-11-05: Audio durations come from a full decode (num_samples), never the mp3 header; header estimates were off by up to 14.9 s.
+- 2026-11-05: Collection readings get `form: unknown`; Stage 1 decides verse/prose from the text markup, not the collection's genre.
+- 2026-11-05: Dramatic = cast list, "Dramatic Readings" genre, or `dramatic-reading` slug; not free-text "dramatic" (Dickens's "Condensed … for his Dramatic Readings" is solo).
+- 2026-11-05: Kept code is vendored verbatim under `vendor/` with provenance; adaptation happens in `src/` at the consuming stage (see `docs/existing-code.md`).
+- 2026-11-05: Kaldi SW aligner is reused but must be made global over the reference (flanking ref words currently vanish instead of becoming `del`).
+- 2026-11-05: Respiro breath outputs are read in place from `/src-projects/librivox-mult-work-files/respiro` (`--respiro` to override) and recorded as `asr.respiro`.
+- 2026-11-05: Respiro is a dead end as a pause/segmentation source (Jim). It is used only as confirmation: a breath interval that agrees with a sentence-end candidate boundary raises confidence in that boundary; it never creates, moves, or vetoes a boundary.
+- 2026-11-05: Duplicated WhisperX/VibeVoice/index data in the work-files repo is ignored; `/data` stays the source of truth.
+- 2026-11-05: wav2vec2 outputs were lost; regenerate with `facebook/wav2vec2-large-960h-lv60-self` (Jim), HF snapshot `54074b1c`. Vocab: A–Z upper case, `'`, `|` word delimiter, no hyphen or digits. Partial words therefore appear as bare letter strings, and the normaliser maps the reference to this alphabet.
+- 2026-11-05: Worker torch pinned via `docker/worker/constraints.txt` (2.5.1/cu124); unpinned deps had pulled a cu132 torch the host driver (12.6) can't run. *(Superseded 2026-11-06.)*
+- 2026-11-05: wav2vec2 stage (`stage_w2v`): greedy CTC, 30 s windows with 5 s context each side (centre frames kept), fp16 log-posteriors saved per file for later forced alignment/scoring. Pilot: word starts within 20–40 ms of WhisperX.
+- 2026-11-05: Gutenberg HTML fetched to `/out/gutenberg/pg<N>-images.html` (Jim: download what isn't already on hand); manifest records url, date, sha256. Different editions/translations are separate sources, not duplicates. pg40745 copied from the work-files repo.
+- 2026-11-05: Aligner = the Kaldi Smith–Waterman in sync-asr (Jim). DP from Kaldi; index-preserving wrapper from the `extractions` branch's `alignment.py`; case/punctuation handled by mapping both sides to the wav2vec alphabet before the DP (not by `P*` stripping or `main`'s edge stripping inside it).
+- 2026-11-05: Missing VibeVoice files are too long for Jim's GPUs: split at silences (wav2vec/WhisperX gaps), re-run, re-assemble onto the recording timeline. Task 1 still must not wait on this.
+- 2026-11-05: The 2 VibeVoice files only on work-files `main` belong in `/data` (Jim); staged at `/out/staging/data/` for copying. The `vv-missing` stash is newline-at-EOF only and is dropped.
+- 2026-11-05: `the-secret-garden-by-frances-hodgson-burnett-2` = LibriVox lv5235 (version 3, ashleighjane, pg113), page fetched from librivox.org and staged; Stage 0 reads `/out/staging/data` as a fallback for files not yet in `/data`.
+- 2026-11-05: Which Around the World reading is the dysfluent native one is unknown and not needed yet (Jim); no special-casing until it is.
+- 2026-11-06: Worker torch/torchaudio are 2.7.1 from the cu126 index (Jim rebuilt), pinned in `docker/worker/constraints.txt` and the Dockerfile. transformers 5.x needs torch ≥ 2.6, which the 2.5.1 pin did not satisfy, and cu126 matches the host driver (CUDA 12.6). Verified: `torch.cuda.is_available()` on the RTX 3090.
+- 2026-11-06: `stage_w2v` resumability = both `<stem>.json` and `<stem>.logp.npy` exist (Jim); logp is written before json, atomically, so interrupted files are redone. `--force` recomputes.
+- 2026-11-06: `stage_w2v` decodes audio in 4 look-ahead threads (`--decoders`); ffmpeg decode was ~60% of per-file time. GPU pilot (RTX 3090, fp16, batch 8, 3.4 h of audio): 394× realtime overall, fp16 output identical to the fp32 CPU run. Full run launched in tmux `w2v` on the worker, ~4 h estimated.
+- 2026-11-06: Stage 1 canonical text = visible body between Gutenberg separators, whitespace collapsed per line, lines "\n", blocks "\n\n"; all offsets index it; blocks keep HTML paths. Page numbers and images are not text; the PG "several editions" note is stripped as boilerplate.
+- 2026-11-06: Paragraph convention (open question in CLAUDE.md): adopt Jim's prototype — every block is a paragraph (headings, epigraphs, captions, TOC entries, stanzas), numbered within its division, with `kind` for filtering. Confirmed by Jim 2026-11-06.
+- 2026-11-06: Divisions are ordinals of heading runs (front matter included), not the book's chapter numbers; heading text kept. Confirmed by Jim 2026-11-06; recorded in docs/ids.md.
+- 2026-11-06: Sentence splitter = Moses (mosestokenizer, en) + rejoin of splits ending in ";" (Jim's prototype; reproduces his Crocodile splits 897/897). Prose per block; verse per poem.
+- 2026-11-06: Verse confidence levels markup/heuristic/override; line-broken non-verse is `kind: lines`; review decisions go in data/stage1_overrides.json keyed by HTML path.
+- 2026-11-06: wav2vec2 full run complete (5,442/5,442 files; 3.2 h, 493× realtime). WhisperX omits the spoken LibriVox disclaimer in 56% of files while timing its first word from ~0 s; it gets no vote on header/footer segments, and its word times before the first wav2vec2-matched book word are not used.
+- 2026-11-06: Moses splits inside quoted dialogue at !/? ("How horrid that crocodile is! | I am really frightened," she said) are accepted as sentence boundaries (Jim).
+- 2026-11-06: `{chapter}` in IDs is `{chapter:03d}` (Jim); texts with >99 divisions exist.
+- 2026-11-06: Stage 2 locates header/footer template elements in the wav2vec2 transcript by fuzzy best-substring matching (rapidfuzz) on space-free letters; it records what was found where and the unmatched ad-libs. Exact header/footer alignment is Stage 5; H/F segment IDs are assigned in Stage 7 in spoken order.
+- 2026-11-06: Cast entries like "Minor characters read by: a, b, c" are reader pools (`pool: true` in the index parse), not characters.
+- 2026-11-06: Unusable audio is listed in data/exclusions.json (path relative to /data, reason, who). Stage 0 marks the section `excluded`; later stages skip it. First entry: lv229 sonnets_17_shakespeare (junk, Jim).
