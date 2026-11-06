@@ -16,6 +16,7 @@ dependencies = [
 lvm-survey = "librivox_mult.stage0_survey:main"
 lvm-text = "librivox_mult.stage1_text:main"
 lvm-headers = "librivox_mult.stage2_headers:main"
+lvm-map = "librivox_mult.stage3_map:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
