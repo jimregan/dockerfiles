@@ -31,25 +31,28 @@ from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+from rapidfuzz.fuzz import partial_ratio_alignment
+
 from .spoken import spoken_words
 
-VERSION = "stage3-0.4"
+VERSION = "stage3-0.9"
 K = 4              # n-gram length for anchors
 MAX_OCC = 8        # ignore n-grams occurring more often than this in the text
 JUMP_RATIO = 5     # a text jump > 5x the audio gap (+ slack) splits the anchor chain
 JUMP_SLACK = 300   # words
 MIN_RUN = 10       # anchors for a run to count as its own span
+MAX_SPANS = 20
 log = logging.getLogger("stage3")
 
 
-_TEXT_CACHE: dict[int, dict] = {}
+_TEXT_CACHE: dict[str, dict] = {}
 
 
-def load_text(n: int, stage1: Path) -> dict:
+def load_text(tid: str, stage1: Path) -> dict:
     """Normalised word stream of a Stage 1 text, with a pointer back to each token."""
-    if n in _TEXT_CACHE:
-        return _TEXT_CACHE[n]
-    d = json.load(gzip.open(stage1 / f"pg{n}.json.gz", "rt"))
+    if tid in _TEXT_CACHE:
+        return _TEXT_CACHE[tid]
+    d = json.load(gzip.open(stage1 / f"{tid}.json.gz", "rt"))
     tk = d["tokens"]
     words, tok_of = [], []
     skip_blocks = {i for i, b in enumerate(d["blocks"]) if b["kind"] in ("toc", "separator")}
@@ -63,8 +66,8 @@ def load_text(n: int, stage1: Path) -> dict:
     for j in range(len(words) - K + 1):
         index[tuple(words[j:j + K])].append(j)
     index = {g: js for g, js in index.items() if len(js) <= MAX_OCC}
-    t = {"n": n, "doc": d, "words": words, "tok_of": tok_of, "index": index}
-    _TEXT_CACHE[n] = t
+    t = {"id": tid, "doc": d, "words": words, "tok_of": tok_of, "index": index}
+    _TEXT_CACHE[tid] = t
     return t
 
 
@@ -88,6 +91,17 @@ def block_edge(t: dict, bi: int, last: bool) -> dict:
     """Location of the first/last word of block ``bi`` (same fields as locate_token)."""
     ws = [w for w, ti in enumerate(t["tok_of"]) if t["doc"]["tokens"]["block"][ti] == bi]
     return locate_token(t, ws[-1] if last else ws[0])
+
+
+def read_in_header(t: dict, blocks: list[int], header_letters: str) -> bool:
+    """True if the gap text (e.g. a chapter title in a <p>) was spoken in the section's
+    header, where Stage 2 matched it and Stage 3 doesn't look."""
+    d = t["doc"]
+    gap = "".join("".join(spoken_words(d["text"][d["blocks"][i]["char_start"]:d["blocks"][i]["char_end"]]))
+                  for i in blocks)
+    if not gap or not header_letters or len(gap) > len(header_letters):
+        return False
+    return partial_ratio_alignment(gap, header_letters).score >= 85
 
 
 def snap_edges(secs: list[dict], tmap: dict) -> None:
@@ -115,6 +129,9 @@ def snap_edges(secs: list[dict], tmap: dict) -> None:
             room -= w[k]
             k += 1
         rest = sum(w[k:])
+        if rest and ub < 0.6 * rest and read_in_header(t, gap[k:], b.get("header_letters", "")):
+            b["gap_read_in_header"] = len(gap) - k  # chapter title matched as a Stage 2 header element
+            ub = rest
         if rest and ub < 0.6 * rest:
             b["gap_unaccounted_words"] = rest  # reader skipped text, or text missing from audio
             b.setdefault("flags", []).append(f"gap_{len(gap) - k}_blocks_{rest}_words")
@@ -156,20 +173,30 @@ def map_section(hyp: list[str], t: dict) -> dict | None:
             pts.append((i, j))
     if not pts:
         return None
-    chain = lis_chain(pts)
-    # split the chain where the text jumps far more than the audio does, keep the run
-    # with the most anchors (drops stray hits in other chapters, epigraphs, etc.)
-    runs, cur = [], [chain[0]]
-    for a, b in zip(chain, chain[1:]):
-        if (b[1] - a[1]) > JUMP_RATIO * max(1, b[0] - a[0]) + JUMP_SLACK:
-            runs.append(cur)
-            cur = []
-        cur.append(b)
-    runs.append(cur)
-    # Usually one run. Several substantial runs = the section reads pieces in a different
-    # order from the text (fable collections); each becomes its own span.
+    # Runs of anchors increasing in audio and text. Pieces read in a different order
+    # from the text (fable collections) can't share one increasing chain, so runs are
+    # extracted repeatedly: take the best, drop points in its audio range, repeat.
+    runs = []
+    for _ in range(MAX_SPANS):
+        if not pts:
+            break
+        chain = lis_chain(pts)
+        parts, cur = [], [chain[0]]
+        for a, b in zip(chain, chain[1:]):
+            if (b[1] - a[1]) > JUMP_RATIO * max(1, b[0] - a[0]) + JUMP_SLACK:
+                parts.append(cur)
+                cur = []
+            cur.append(b)
+        parts.append(cur)
+        new = [x for x in parts if len(x) >= MIN_RUN] or ([max(parts, key=len)] if not runs else [])
+        if not new:
+            break
+        runs.extend(new)
+        taken = [(x[0][0], x[-1][0] + K) for x in new]
+        pts = [p for p in pts if not any(a <= p[0] < z for a, z in taken)]
     big = max(len(x) for x in runs)
     keep = [x for x in runs if len(x) >= max(MIN_RUN, 0.1 * big)] or [max(runs, key=len)]
+    keep.sort(key=lambda x: x[0][0])
     spans = [{"hyp_first": x[0][0], "hyp_last": x[-1][0] + K - 1,
               "text_first": x[0][1], "text_last": x[-1][1] + K - 1, "n_anchors": len(x)} for x in keep]
     main = max(keep, key=len)
@@ -188,15 +215,19 @@ def process_reading(args) -> dict:
     r, out_root, w2v_root, s2_root, s1_root = args
     s2p = s2_root / r["work"] / f"{r['reading_id'].replace(':', '_')}.json"
     s2 = {s["stem"]: s for s in json.loads(s2p.read_text())["sections"]} if s2p.exists() else {}
-    texts = [load_text(n, s1_root) for n in r["gutenberg_ids"] if (s1_root / f"pg{n}.json.gz").exists()]
+    def texts_for(sec: dict) -> list[dict]:
+        ids = sec.get("texts", [f"pg{g}" for g in r["gutenberg_ids"]])
+        return [load_text(t, s1_root) for t in ids if (s1_root / f"{t}.json.gz").exists()]
     out = {"version": VERSION, "input_sha": row_sha(r), "reading_id": r["reading_id"], "work": r["work"],
            "librivox_slug": r["librivox_slug"], "gutenberg_ids": r["gutenberg_ids"], "sections": []}
     for s in r["sections"]:
-        rec = {"section": s["section"], "stem": s["stem"], "title": s["title"], "duration": s["duration"]}
+        rec = {"section": s["section"], "stem": s["stem"], "title": s["title"], "duration": s["duration"],
+               "alternate": s.get("alternate", False)}
         if s.get("excluded"):
             rec["excluded"] = s["excluded"]
             out["sections"].append(rec)
             continue
+        texts = texts_for(s)
         if not texts:
             rec["error"] = "no source text"
             out["sections"].append(rec)
@@ -214,12 +245,13 @@ def process_reading(args) -> dict:
             if m and (best is None or m["hyp_covered"] > best[1]["hyp_covered"]):
                 best = (t, m)
         rec["book_words"] = [lo, hi]
+        rec["header_letters"] = "".join(re.sub(r"[^a-z']", "", w["word"].lower()) for w in wd[:lo])
         if best is None:
             rec["error"] = "no anchors"
         else:
             t, m = best
             rec.update(m)
-            rec["text"] = f"pg{t['n']}"
+            rec["text"] = t["id"]
             rec["start"] = locate_token(t, m["text_first"])
             rec["end"] = locate_token(t, m["text_last"])
             for sp in m["spans"]:
@@ -230,7 +262,9 @@ def process_reading(args) -> dict:
             rec["hyp_unanchored_before"] = m["hyp_first"]
             rec["hyp_unanchored_after"] = len(hyp) - 1 - m["hyp_last"]
         out["sections"].append(rec)
-    snap_edges(out["sections"], {f"pg{t['n']}": t for t in texts})
+    snap_edges(out["sections"], {t["id"]: t for s in r["sections"] for t in texts_for(s)})
+    for rec in out["sections"]:
+        rec.pop("header_letters", None)
     dst = out_root / r["work"] / f"{r['reading_id'].replace(':', '_')}.json"
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(".tmp")
@@ -261,11 +295,25 @@ def continuity(sections: list[dict], kinds: dict[str, list[str]]) -> None:
             a, b = prev["end"]["block"], s["start"]["block"]
             if b <= a:
                 s["gap_blocks_from_prev"] = b - a
-                s["flags"].append("overlap_or_reversed")
+                if s.get("alternate") or prev.get("alternate"):
+                    s["note"] = "alternate version re-reads the text"
+                elif b == a:
+                    s["note"] = "shares a block with the previous section"
+                elif same_span(prev, s):
+                    s["note"] = "same text as the previous section (another reader)"
+                else:
+                    s["flags"].append("overlap_or_reversed")
             else:
                 k = kinds[s["text"]]
                 s["gap_blocks_from_prev"] = sum(1 for i in range(a + 1, b) if k[i] in READABLE)
         prev = s
+
+
+def same_span(a: dict, b: dict) -> bool:
+    """Two sections read (nearly) the same text: >= 80% overlap of their block spans."""
+    a0, a1, b0, b1 = a["start"]["block"], a["end"]["block"], b["start"]["block"], b["end"]["block"]
+    ov = min(a1, b1) - max(a0, b0) + 1
+    return ov > 0 and ov >= 0.8 * max(a1 - a0 + 1, b1 - b0 + 1)
 
 
 def s_single(s: dict) -> bool:
@@ -276,10 +324,10 @@ def s_single(s: dict) -> bool:
 def write_review(rdir: Path, readings: list[dict], s1_root: Path) -> None:
     rdir.mkdir(parents=True, exist_ok=True)
     kinds = {}
-    for n in sorted({g for r in readings for g in r["gutenberg_ids"]}):
-        p = s1_root / f"pg{n}.json.gz"
+    for tid in sorted({s["text"] for r in readings for s in r["sections"] if s.get("text")}):
+        p = s1_root / f"{tid}.json.gz"
         if p.exists():
-            kinds[f"pg{n}"] = [b["kind"] for b in json.load(gzip.open(p, "rt"))["blocks"]]
+            kinds[tid] = [b["kind"] for b in json.load(gzip.open(p, "rt"))["blocks"]]
     c = lambda x: re.sub(r"[\t\r\n]+", " ", str(x if x is not None else ""))  # noqa: E731
     stats = Counter()
     head = ("work\treading_id\tsection\tstem\ttitle\ttext\tstart_div\tstart_para\tstart_heading\tend_div\tend_para\t"
@@ -351,7 +399,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
         todo.append(r)
     # group by text so each worker process loads a text once
-    todo.sort(key=lambda r: tuple(r["gutenberg_ids"]))
+    todo.sort(key=lambda r: tuple(r.get("texts") or []))
     log.info("%d readings selected, %d to do", len(sel), len(todo))
     args = [(r, out_root, a.out / "w2v", a.out / "stage2", a.out / "stage1") for r in todo]
     with ProcessPoolExecutor(a.jobs) as ex:

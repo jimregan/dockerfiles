@@ -1,0 +1,25 @@
+{
+  "_doc": "Source-text overrides decided by Jim. readings: by reading_id; works: every reading in a /data work directory. Stage 0 applies them and records the originally listed source in source_override.listed. `file` = plain-text source for a non-Gutenberg text_id (title line, blank line, stanzas).",
+  "readings": {
+    "lv10387": {
+      "gutenberg_ids": [
+        730
+      ],
+      "reason": "LibriVox page links pg5343 (Rainbow Valley) by mistake; pg730 is the Oliver Twist text the other readings use (Jim, 2026-11-06)"
+    }
+  },
+  "works": {
+    "if": {
+      "text_id": "ws-if",
+      "url": "https://en.wikisource.org/wiki/Rewards_and_Fairies/If%E2%80%94",
+      "reason": "all versions of If use one text (Jim, 2026-11-06)",
+      "file": "/out/texts/if.txt"
+    },
+    "no-second-troy": {
+      "text_id": "ws-no-second-troy",
+      "url": "https://en.wikisource.org/wiki/The_Green_Helmet_and_Other_Poems/No_Second_Troy",
+      "reason": "all versions use one text (Jim, 2026-11-06)",
+      "file": "/out/texts/no-second-troy.txt"
+    }
+  }
+}

@@ -647,7 +647,7 @@ def write_review(rdir: Path, results: dict[int, dict]) -> None:
                 b = d["blocks"][dv["first_block"]]
                 first = next((d["text"][x["char_start"]:x["char_end"]] for x in d["blocks"][dv["first_block"]:]
                               if x["kind"] not in ("heading",)), "")[:80]
-                f.write(f"pg{n}\t{dv['division']}\t{dv['n_blocks']}\t{_c(' | '.join(dv['heading'])[:100])}\t{_c(first)}\n")
+                f.write(f"{n}\t{dv['division']}\t{dv['n_blocks']}\t{_c(' | '.join(dv['heading'])[:100])}\t{_c(first)}\n")
     with (rdir / "poems.tsv").open("w") as f:
         f.write("text\tpoem\tdivision\tconfidence\tsource\tstanzas\tlines\ttitle\tfirst_line\tlast_line\thtml\n")
         for n, d in sorted(results.items()):
@@ -655,7 +655,7 @@ def write_review(rdir: Path, results: dict[int, dict]) -> None:
                 fb, lb = d["blocks"][p["blocks"][0]], d["blocks"][p["blocks"][-1]]
                 fl = d["text"][fb["lines"][0]["char_start"]:fb["lines"][0]["char_end"]]
                 ll = d["text"][lb["lines"][-1]["char_start"]:lb["lines"][-1]["char_end"]]
-                f.write(f"pg{n}\t{p['poem']}\t{p['division']}\t{p['confidence']}\t{','.join(p['source'])}\t"
+                f.write(f"{n}\t{p['poem']}\t{p['division']}\t{p['confidence']}\t{','.join(p['source'])}\t"
                         f"{len(p['blocks'])}\t{p['n_lines']}\t{_c((p['title'] or '')[:60])}\t{_c(fl[:70])}\t"
                         f"{_c(ll[:70])}\t{fb['html']}\n")
     with (rdir / "lines_blocks.tsv").open("w") as f:
@@ -664,7 +664,7 @@ def write_review(rdir: Path, results: dict[int, dict]) -> None:
             for b in d["blocks"]:
                 if b["kind"] == "lines" or "multiline" in b["flags"]:
                     ls = [d["text"][l["char_start"]:l["char_end"]] for l in b["lines"]]
-                    f.write(f"pg{n}\t{b['division']}\t{b['para']}\t{b['kind']}\t{len(ls)}\t{_c(' / '.join(ls)[:200])}\t{b['html']}\n")
+                    f.write(f"{n}\t{b['division']}\t{b['para']}\t{b['kind']}\t{len(ls)}\t{_c(' / '.join(ls)[:200])}\t{b['html']}\n")
     write_poems_html(rdir / "poems.html", results)
     with (rdir / "summary.tsv").open("w") as f:
         cols = ["n_divisions", "n_blocks", "n_poems", "n_sentences", "n_words", "n_quotes",
@@ -672,7 +672,7 @@ def write_review(rdir: Path, results: dict[int, dict]) -> None:
         f.write("text\t" + "\t".join(cols) + "\tkinds\tuncovered_samples\n")
         for n, d in sorted(results.items()):
             st = d["stats"]
-            f.write(f"pg{n}\t" + "\t".join(str(st[c]) for c in cols) + "\t" +
+            f.write(f"{n}\t" + "\t".join(str(st[c]) for c in cols) + "\t" +
                     json.dumps(st["kinds"]) + "\t" + _c(" | ".join(st["uncovered_samples"][:5])) + "\n")
 
 
@@ -692,13 +692,13 @@ def write_poems_html(path: Path, results: dict[int, dict]) -> None:
            "to <code>data/stage1_overrides.json</code>.</p><ul>"]
     for n, d in sorted(results.items()):
         nh = sum(1 for p in d["poems"] if p["confidence"] == "heuristic")
-        out.append(f"<li><a href='#pg{n}'>pg{n}</a>: {len(d['poems'])} poems ({nh} heuristic)</li>")
+        out.append(f"<li><a href='#{n}'>{n}</a>: {len(d['poems'])} poems ({nh} heuristic)</li>")
     out.append("</ul>")
     for n, d in sorted(results.items()):
         if not d["poems"]:
             continue
         T = d["text"]
-        out.append(f"<h2 id='pg{n}'>pg{n}</h2>")
+        out.append(f"<h2 id='{n}'>{n}</h2>")
         for p in sorted(d["poems"], key=lambda p: (p["confidence"] != "heuristic", p["poem"])):
             out.append(f"<div class='poem {p['confidence']}'><div class=meta>poem {p['poem']} · division "
                        f"{p['division']} · {p['confidence']} · {','.join(p['source'])} · "
@@ -718,18 +718,57 @@ def write_poems_html(path: Path, results: dict[int, dict]) -> None:
     path.write_text("\n".join(out), encoding="utf-8")
 
 
-def select_ids(a) -> list[int]:
+PLAIN_DIR = Path(__file__).resolve().parents[2] / "data" / "texts"
+
+
+def select_sources(a, gdir: Path) -> list[tuple[str, Path]]:
+    """(text_id, source file): Gutenberg HTML for pg<N>, data/texts/<id>.txt otherwise."""
     if a.id:
-        return sorted(set(a.id))
-    ids = set()
-    for line in a.inventory.read_text().splitlines():
-        r = json.loads(line)
-        if a.work and r["work"] not in a.work:
-            continue
-        if a.reading and r["librivox_slug"] not in a.reading:
-            continue
-        ids.update(r["gutenberg_ids"])
-    return sorted(ids)
+        ids = {f"pg{n}" for n in a.id}
+    else:
+        ids = set()
+        for line in a.inventory.read_text().splitlines():
+            r = json.loads(line)
+            if a.work and r["work"] not in a.work:
+                continue
+            if a.reading and r["librivox_slug"] not in a.reading:
+                continue
+            ids.update(r.get("texts") or [f"pg{g}" for g in r["gutenberg_ids"]])
+    files = plain_files()
+    return [(t, gdir / f"{t}-images.html" if t.startswith("pg") else files.get(t, PLAIN_DIR / f"{t}.txt"))
+            for t in sorted(ids, key=lambda t: (not t.startswith("pg"), int(t[2:]) if t.startswith("pg") else 0, t))]
+
+
+def plain_files() -> dict[str, Path]:
+    """text_id -> plain-text file, from data/source_overrides.json (`file`)."""
+    p = Path(__file__).resolve().parents[2] / "data" / "source_overrides.json"
+    if not p.exists():
+        return {}
+    o = json.loads(p.read_text())
+    entries = list(o.get("works", {}).values()) + list(o.get("readings", {}).values())
+    return {e["text_id"]: Path(e["file"]) for e in entries if e.get("text_id") and e.get("file")}
+
+
+def plaintext_to_html(txt: str) -> str:
+    """A plain-text poem as Gutenberg-style HTML, so it goes through the same parser.
+
+    A first block of one short line is the title; every other blank-line-separated
+    block is a stanza (verse markup, so confidence 'markup').
+    """
+    import html as H
+
+    blocks = [b.strip("\n") for b in re.split(r"\n\s*\n", txt.strip()) if b.strip()]
+    body = []
+    if blocks and "\n" not in blocks[0] and len(blocks[0]) <= 80 and len(blocks) > 1:
+        body.append(f"<h2>{H.escape(blocks[0].strip())}</h2>")
+        blocks = blocks[1:]
+    body.append('<div class="poem">')
+    for b in blocks:
+        lines = "".join(f'<span class="i0">{H.escape(l.strip())}<br></span>\n' for l in b.splitlines() if l.strip())
+        body.append(f'<div class="stanza">\n{lines}</div>')
+    body.append("</div>")
+    return ('<html><body><div id="pg-start-separator"></div>\n' + "\n".join(body) +
+            '\n<div id="pg-end-separator"></div></body></html>')
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -756,11 +795,10 @@ def main(argv: list[str] | None = None) -> int:
     splitter = Splitter()
     results = {}
     try:
-        for n in select_ids(a):
-            src = gdir / f"pg{n}-images.html"
-            dst = odir / f"pg{n}.json.gz"
+        for tid, src in select_sources(a, gdir):
+            dst = odir / f"{tid}.json.gz"
             if not src.exists():
-                log.error("pg%d: no HTML at %s", n, src)
+                log.error("%s: no source at %s", tid, src)
                 continue
             sha = hashlib.sha256(src.read_bytes()).hexdigest()
             if dst.exists() and not a.force:
@@ -768,21 +806,24 @@ def main(argv: list[str] | None = None) -> int:
                     d = json.load(f)
                 if (d["meta"]["source_sha256"] == sha and d["meta"]["version"] == VERSION
                         and d["meta"].get("overrides_sha") == ov_sha):
-                    results[n] = d
+                    results[tid] = d
                     continue
-            d = build(src.read_text(encoding="utf-8"), splitter, overrides_all.get(f"pg{n}", {}))
-            d["meta"] = {"text": f"pg{n}", "gutenberg_id": n, "source": str(src), "source_sha256": sha,
-                         "manifest_sha256": manifest.get(n, {}).get("sha256"), "version": VERSION,
+            raw = src.read_text(encoding="utf-8")
+            html = raw if src.suffix == ".html" else plaintext_to_html(raw)
+            d = build(html, splitter, overrides_all.get(tid, {}))
+            n = int(tid[2:]) if tid.startswith("pg") else None
+            d["meta"] = {"text": tid, "gutenberg_id": n, "source": str(src), "source_sha256": sha,
+                         "manifest_sha256": manifest.get(n, {}).get("sha256") if n else None, "version": VERSION,
                          "splitter": "moses-en+rejoin-semicolon", "overrides_sha": ov_sha}
             tmp = dst.with_suffix(".tmp")
             with gzip.open(tmp, "wt", compresslevel=6) as f:
                 json.dump(d, f, ensure_ascii=False)
             tmp.replace(dst)
             st = d["stats"]
-            log.info("pg%d: %d div, %d blocks, %d poems, %d sents, %d words, coverage %.4f, uncovered %d, split fail %d",
-                     n, st["n_divisions"], st["n_blocks"], st["n_poems"], st["n_sentences"], st["n_words"],
+            log.info("%s: %d div, %d blocks, %d poems, %d sents, %d words, coverage %.4f, uncovered %d, split fail %d",
+                     tid, st["n_divisions"], st["n_blocks"], st["n_poems"], st["n_sentences"], st["n_words"],
                      st["chars_covered"] / max(st["chars_total"], 1), st["n_uncovered"], st["split_failures"])
-            results[n] = d
+            results[tid] = d
     finally:
         splitter.close()
     write_review(a.out / "review" / "stage1", results)

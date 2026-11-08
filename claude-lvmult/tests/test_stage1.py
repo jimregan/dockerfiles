@@ -179,3 +179,11 @@ def test_letter_closings_are_not_verse(lines):
 
 def test_short_verse_still_verse():
     assert s1.looks_like_verse(["God bless you, merry gentleman!", "May nothing you dismay!"])
+
+
+def test_plaintext_poem(splitter):
+    txt = "No Second Troy\n\nWhy should I blame her that she filled my days\nWith misery, or that she would of late\n\nWhy, what could she have done, being what she is?\nWas there another Troy for her to burn?\n"
+    d = s1.build(s1.plaintext_to_html(txt), splitter)
+    assert [b["kind"] for b in d["blocks"]] == ["heading", "verse", "verse"]
+    assert len(d["poems"]) == 1 and d["poems"][0]["title"] == "No Second Troy"
+    assert d["poems"][0]["n_lines"] == 4 and d["poems"][0]["confidence"] == "markup"

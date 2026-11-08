@@ -175,8 +175,36 @@ def respiro_info(path: Path) -> dict:
 
 
 EXCLUSIONS_FILE = Path(__file__).resolve().parents[2] / "data" / "exclusions.json"
-EXCLUSIONS: dict[str, str] = (json.loads(EXCLUSIONS_FILE.read_text())["files"]
-                              if EXCLUSIONS_FILE.exists() else {})
+_EXCL = json.loads(EXCLUSIONS_FILE.read_text()) if EXCLUSIONS_FILE.exists() else {}
+EXCLUSIONS: dict[str, str] = _EXCL.get("files", {})
+EXCLUDED_READINGS: dict[str, str] = _EXCL.get("readings", {})
+OVERRIDES_FILE = Path(__file__).resolve().parents[2] / "data" / "source_overrides.json"
+OVERRIDES = json.loads(OVERRIDES_FILE.read_text()) if OVERRIDES_FILE.exists() else {}
+
+
+def apply_overrides(row: dict) -> None:
+    """Source overrides and whole-reading exclusions from data/*.json (Jim's decisions).
+
+    ``texts`` lists the reading's source text ids: ``pg<N>`` for Gutenberg, or the
+    override's ``text_id`` (e.g. ``ws-if`` for a Wikisource page).
+    """
+    o = OVERRIDES.get("readings", {}).get(row["reading_id"]) or OVERRIDES.get("works", {}).get(row["work"])
+    if o:
+        row["source_override"] = {**o, "listed": {"gutenberg_ids": row["gutenberg_ids"],
+                                                  "online_text": row["online_text"]}}
+        row["gutenberg_ids"] = list(o.get("gutenberg_ids", []))
+    row["texts"] = [f"pg{g}" for g in row["gutenberg_ids"]] + ([o["text_id"]] if o and o.get("text_id") else [])
+    # In a collection each section names its own source; a section whose source is not
+    # Gutenberg has no text even if other sections of the collection do.
+    for s in row["sections"]:
+        if row.get("collection") and not o:
+            s["texts"] = [f"pg{g}" for g in s.get("section_gutenberg_ids", [])]
+        else:
+            s["texts"] = list(row["texts"])
+    why = EXCLUDED_READINGS.get(row["reading_id"])
+    if why:
+        for s in row["sections"]:
+            s["excluded"] = s.get("excluded") or why
 
 RESPIRO_ROOT = Path("/src-projects/librivox-mult-work-files/respiro")
 
@@ -431,6 +459,8 @@ def main(argv: list[str] | None = None) -> int:
     rows = []
     for w, r in rdirs:
         rows.extend(survey_reading(a.data, w, r, probes, a.respiro, a.staging))
+    for row in rows:
+        apply_overrides(row)
     rows.sort(key=lambda x: (x["work"], x["reading_id"]))
 
     # partial runs update only their own rows in an existing inventory
@@ -475,6 +505,7 @@ def summarise(rows: list[dict]) -> dict:
         "channels": Counter(s["channels"] for s in secs),
         "probe_errors": [s["path"] for s in secs if s["probe_error"]],
         "excluded_files": {s["path"]: s["excluded"] for s in secs if s.get("excluded")},
+        "source_overrides": {r["reading_id"]: r["texts"] for r in rows if r.get("source_override")},
         "readings_with_issues": {r["reading_id"]: r["issues"] for r in rows if r["issues"]},
     }
 
