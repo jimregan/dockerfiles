@@ -53,3 +53,10 @@ def test_long_insertion_is_its_own_segment():
     assert [s["unit"] for s in segs] == ["S", "X", "S"]
     assert segs[1]["id"] == "01/X01" and segs[1]["text_id"] is None and len(segs[1]["alignment"]) == s7.X_MIN_WORDS + 1
     assert s7.check(segs, 4, 100.0) == []
+
+
+def test_ids_unique_across_sections():
+    secs = [{"segments": [{"id": "S/001/0001/01"}, {"id": "S/001/0001/01.2"}]},
+            {"segments": [{"id": "S/001/0001/01"}, {"id": "01/H01"}]}]
+    s7.unique_ids(secs)
+    assert [x["id"] for x in secs[1]["segments"]] == ["S/001/0001/01.3", "01/H01"]

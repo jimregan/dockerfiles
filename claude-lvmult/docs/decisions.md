@@ -54,4 +54,4 @@
 - 2026-11-09: IDs: poem numbers zero-padded to 3 digits, like chapters (Jim).
 - 2026-11-09: IDs: `{reader}` = `reading_id` (lv<LibriVox project id>[-sNN]); multi-text readings put the text id in body ids; X (unreferenced) segments are supervisions with empty text and `custom.unreferenced` (Jim).
 - 2026-11-09: Stage 3 multi-span sections use all spans (`ranges`, merged when <8 blocks apart), not only the largest; 1.8 h of book text had been left unreferenced (Jim: fix Stage 3 first).
-- 2026-11-09: lhotse is not installed in the repo env (Jim); Stage 8 validates with its own checks, and the lhotse load tests skip.
+- 2026-11-09: lhotse is optional and test-only (importorskip), never a project dependency (Jim); Stage 8 validates with its own checks.

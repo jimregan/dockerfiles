@@ -33,7 +33,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 OUT = Path("/out")
-VERSION = "stage7-0.3"
+VERSION = "stage7-0.4"
 MIN_CUT_SIL = 0.1
 PAD = 0.25
 EDGE_PAD = 0.25
@@ -303,12 +303,30 @@ def process(args: tuple[dict, bool]) -> dict:
             out["errors"] += [f"{g}:{stem}:{e}" for e in errs]
             out["segmentations"][g].append({"stem": stem, "section": iv.get("section"), "text": sec["text"],
                                             "readers": iv.get("readers"), "segments": segs})
+    for g in segmentations:
+        unique_ids(out["segmentations"][g])
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(".tmp")
     with gzip.open(tmp, "wt") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     tmp.replace(dst)
     return {"reading_id": r["reading_id"], "status": "made", "errors": len(out["errors"])}
+
+
+def unique_ids(secs: list[dict]) -> None:
+    """Make ids unique across a reading: a unit read again in a later section (alternate
+    versions, overlapping sections, re-read fables) gets the next free `.N`, in section order."""
+    used: set = set()
+    for sec in secs:
+        for seg in sec["segments"]:
+            sid = seg["id"]
+            if sid in used:
+                base = re.sub(r"\.\d+$", "", sid)
+                n = 2
+                while f"{base}.{n}" in used:
+                    n += 1
+                sid = seg["id"] = f"{base}.{n}"
+            used.add(sid)
 
 
 def write_review(out: Path) -> None:

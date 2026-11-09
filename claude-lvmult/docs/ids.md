@@ -49,7 +49,9 @@ Verse inside prose (poems in a prose chapter): the stanzas have both a `{para}` 
 
 - **Multi-text readings** (a reading whose sections use more than one Gutenberg text): body
   tails carry the text, `S/{text}/…`, `L/{text}/…` (confirmed 2026-11-09).
-- **Repeats:** a unit read again after another unit has started gets `.2`, `.3`… on its id.
+- **Repeats:** a unit read again gets `.2`, `.3`… on its id, unique across the reading in
+  section order: within a section after another unit has started (reordered reading), or in
+  a later section (alternate versions, overlapping sections, re-read fables).
 - **X segments** are supervisions with `text: ""`, the spoken words in `custom.verbatim`
   and `alignment`, and `custom.unreferenced: true` (confirmed 2026-11-09).
 - `text_id` is the `{text}/…` body tail without the `S/`/`L/` prefix; null for H/F/X.

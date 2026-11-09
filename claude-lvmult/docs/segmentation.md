@@ -25,7 +25,8 @@ aligned pair `[kind, ref_row, alignment_index]`, so `del` rows are covered too.
   energy, as in Stage 6. Examples: a story read that isn't in the mapped text, long
   ad-libs, and the 5 sections whose body Stage 5 dropped.
 - If a unit comes back after another unit has started, it gets a second segment with id
-  suffix `.2`. This only happens with reordered reading.
+  suffix `.2`. This only happens with reordered reading. A unit already used by an earlier
+  section of the reading (alternate versions, overlapping sections) also gets the next `.N`.
 
 ## Boundaries
 
