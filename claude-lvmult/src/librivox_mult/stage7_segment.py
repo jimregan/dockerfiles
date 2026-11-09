@@ -33,7 +33,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 OUT = Path("/out")
-VERSION = "stage7-0.2"
+VERSION = "stage7-0.3"
 MIN_CUT_SIL = 0.1
 PAD = 0.25
 EDGE_PAD = 0.25
@@ -75,6 +75,16 @@ def unit_ids(u: tuple, d1: dict | None, text: str, section: str) -> tuple[str | 
     else:
         tail = f"{s['division']:03d}/{s['para']:04d}/{s['n']:02d}"
     return f"{text}/{tail}", f"S/{tail}"
+
+
+def punct_edges(tk: dict, t0: int, t1: int, key: str) -> tuple[int, int]:
+    """Widen [t0, t1] over the punctuation tokens next to it in the same sentence (line),
+    so `text` keeps opening quotes and final stops, which have no spoken words."""
+    while t0 > 0 and tk["punct"][t0 - 1] and tk[key][t0 - 1] == tk[key][t0]:
+        t0 -= 1
+    while t1 + 1 < len(tk["punct"]) and tk["punct"][t1 + 1] and tk[key][t1 + 1] == tk[key][t1]:
+        t1 += 1
+    return t0, t1
 
 
 def cut_at(b: dict | None) -> tuple[float, float, str, float | None]:
@@ -193,7 +203,8 @@ def segment_section(sec5: dict, sec6: dict | None, sec4: dict | None, hyp: list[
         else:
             toks = [rows[i][1] for i in s["ref_rows"]]
             tk = d1["tokens"]
-            c0, c1 = min(tk["start"][t] for t in toks), max(tk["end"][t] for t in toks)
+            k0, k1 = punct_edges(tk, min(toks), max(toks), "line" if u[0] == "L" else "sent")
+            c0, c1 = tk["start"][k0], tk["end"][k1]
             text, src_span, hf = d1["text"][c0:c1], [c0, c1], None
             nsws = [nsw[k] for k in sorted({rows[i][2] for i in s["ref_rows"] if rows[i][2] >= 0}) if k in nsw]
         cor = sum(1 for p in range(*s["p"]) if words[p][2] == "cor")

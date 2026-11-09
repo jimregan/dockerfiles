@@ -33,7 +33,7 @@ from pathlib import Path
 
 OUT = Path("/out")
 TEXT_VERSION = "stage4-0.1"  # the NeMo step (worker); outputs keep this unless it changes
-VERSION = "stage4-0.3"       # the selection step
+VERSION = "stage4-0.4"       # the selection step
 LIGATURES = str.maketrans({"æ": "ae", "œ": "oe", "ß": "ss", "ø": "o", "ð": "d", "þ": "th", "ł": "l",
                            "’": "'", "‘": "'"})
 # abbreviations followed by "."; the ones in NEEDS_NUMBER only before a number
@@ -342,13 +342,15 @@ def cmd_select(a) -> int:
                 texts[tid] = t
             t = texts[tid]
             b0, b1 = s["start"]["block"], s["end"]["block"]
+            ranges = s.get("ranges") or [[b0, b1]]
             bt = t["block_of_tok"]
-            ref = [x for x in t["words"] if b0 <= bt[x[1]] <= b1]
+            ref = [x for x in t["words"] if any(r0 <= bt[x[1]] <= r1 for r0, r1 in ranges)]
             wd = json.loads((a.out / "w2v" / r["work"] / r["librivox_slug"] / f"{s['stem']}.json").read_text())["words"]
             lo, hi = s["book_words"]
             hyp = [re.sub(r"[^a-z']", "", w["word"].lower()).strip("'") for w in wd[lo:hi]]
             ch = select_section(ref, hyp, t["nsw"])
             out["sections"].append({"stem": s["stem"], "text": tid, "blocks": [b0, b1],
+                                    **({"ranges": ranges} if len(ranges) > 1 or ranges[0] != [b0, b1] else {}),
                                     "ref": apply_choices(ref, ch), "nsw": ch})
             n_sec += 1
             n_nsw += len(ch)

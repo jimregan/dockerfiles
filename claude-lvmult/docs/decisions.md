@@ -51,3 +51,7 @@
 - 2026-11-08: Stage 5 aligner = Kaldi SW scoring and tie-breaking, global over the reference (unsaid ref words are del), run between exact-match anchors for speed; reference = matched header variants + Stage 4 body + matched footer variants; out-of-order sections re-sorted by block; Stage 3 suspect sections (density < 0.2) align headers/footers only.
 - 2026-11-08: Stage 5 approved (Jim): the dysfluent 80 Days reading is mostly simple substitutions; mispronunciations are likely smoothed over by the ASR, so they are not detected yet.
 - 2026-11-08: Stage 6 pauses from 10 ms energy (silence < floor + 0.2·(speech − floor)), not CTC gaps; Respiro breaths recorded only. Stage 7: pause cuts inside silence with pad ≤ 0.25 s, else forced at the word-gap midpoint; inserted words go to the next unit; runs of ≥ 15 inserted words become unreferenced-speech X segments; verse lines only for poem blocks.
+- 2026-11-09: IDs: poem numbers zero-padded to 3 digits, like chapters (Jim).
+- 2026-11-09: IDs: `{reader}` = `reading_id` (lv<LibriVox project id>[-sNN]); multi-text readings put the text id in body ids; X (unreferenced) segments are supervisions with empty text and `custom.unreferenced` (Jim).
+- 2026-11-09: Stage 3 multi-span sections use all spans (`ranges`, merged when <8 blocks apart), not only the largest; 1.8 h of book text had been left unreferenced (Jim: fix Stage 3 first).
+- 2026-11-09: lhotse is not installed in the repo env (Jim); Stage 8 validates with its own checks, and the lhotse load tests skip.

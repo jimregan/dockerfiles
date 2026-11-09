@@ -59,7 +59,7 @@ headers), `src_span`, `verbatim`, `alignment` (spoken words, partials marked `-`
 - An `S` segment holding its whole sentence takes Stage 5's sentence confidence.
 - Otherwise: cor/n × mean wav2vec2 score.
 
-## Proposals awaiting Jim
+## IDs (decided 2026-11-09; rules in `ids.md`)
 
 - `{reader}` in supervision ids = the Stage 0 `reading_id` (`lv<id>[-s<NN>]`), which is unique
   per reading.

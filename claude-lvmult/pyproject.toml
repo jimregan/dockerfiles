@@ -20,7 +20,9 @@ lvm-map = "librivox_mult.stage3_map:main"
 lvm-align = "librivox_mult.stage5_align:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+]
 
 [build-system]
 requires = ["hatchling"]

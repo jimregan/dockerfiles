@@ -35,13 +35,14 @@ from rapidfuzz.fuzz import partial_ratio_alignment
 
 from .spoken import spoken_words
 
-VERSION = "stage3-0.9"
+VERSION = "stage3-1.0"
 K = 4              # n-gram length for anchors
 MAX_OCC = 8        # ignore n-grams occurring more often than this in the text
 JUMP_RATIO = 5     # a text jump > 5x the audio gap (+ slack) splits the anchor chain
 JUMP_SLACK = 300   # words
 MIN_RUN = 10       # anchors for a run to count as its own span
 MAX_SPANS = 20
+RANGE_GAP = 8      # spans of one section closer than this many blocks are merged into one range
 log = logging.getLogger("stage3")
 
 
@@ -207,6 +208,18 @@ def map_section(hyp: list[str], t: dict) -> dict | None:
             "hyp_covered": covered_hyp, "density": round(covered_hyp / max(1, len(hyp)), 3)}
 
 
+def span_ranges(spans: list[dict], gap: int = RANGE_GAP) -> list[list[int]]:
+    """Block ranges [b0, b1] (inclusive) covering every span, in text order. Blocks between
+    spans less than `gap` apart are included (unanchored text between two read pieces)."""
+    out: list[list[int]] = []
+    for b0, b1 in sorted((sp["start"]["block"], sp["end"]["block"]) for sp in spans):
+        if out and b0 <= out[-1][1] + gap:
+            out[-1][1] = max(out[-1][1], b1)
+        else:
+            out.append([b0, b1])
+    return out
+
+
 def row_sha(r: dict) -> str:
     return hashlib.sha256(json.dumps(r, sort_keys=True).encode()).hexdigest()[:16]
 
@@ -257,6 +270,8 @@ def process_reading(args) -> dict:
             for sp in m["spans"]:
                 sp["start"] = locate_token(t, sp["text_first"])
                 sp["end"] = locate_token(t, sp["text_last"])
+            if m["n_spans"] > 1:
+                rec["ranges"] = span_ranges(m["spans"])
             rec["start_time"] = wd[lo + m["hyp_first"]]["start"]
             rec["end_time"] = wd[lo + m["hyp_last"]]["end"]
             rec["hyp_unanchored_before"] = m["hyp_first"]

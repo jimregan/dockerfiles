@@ -28,6 +28,11 @@
 5. **Span:** first/last anchor → token, block, division, paragraph. Also recorded:
    `density` (share of audio words covered by anchors), `start_time`/`end_time`, and
    the unanchored audio words before the first and after the last anchor.
+   - With several spans, `start`/`end` are the largest span's, and `ranges` lists the
+     block ranges `[b0, b1]` covering all spans in text order. Spans fewer than 8 blocks
+     apart merge into one range, including the blocks between them. Stage 4 builds the
+     reference from `ranges` (stage3-1.0). Before this, only the largest span was used,
+     and 1.8 h of book text in 20 sections fell into Stage 7's unreferenced X segments.
 6. **Edge snapping between consecutive sections** (single-span, same text, in section
    order). Readable blocks (para/verse/lines) between section A's end and B's start are
    assigned:
