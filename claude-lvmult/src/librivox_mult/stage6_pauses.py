@@ -7,7 +7,7 @@
 saved as /out/stage6/energy/<work>/<slug>/<stem>.npy (float16). Skips existing files.
 
 ``pauses``: per Stage 5 section, every candidate boundary between reference units
-(sentence ``S``, verse line ``L``, block ``P``, header/footer element ``H``). The gap is
+(sentence ``S``, verse line ``L`` (poem blocks only), block ``P``, header/footer element ``H``). The gap is
 between the last wav2vec2 word of the unit before it and the next wav2vec2 word, so
 inserted material counts with the following unit. Inside that gap (plus one CTC frame),
 ``silence`` is the longest run of frames below the file's silence threshold (where Stage 7
@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 
 OUT = Path("/out")
-VERSION = "stage6-0.1"
+VERSION = "stage6-0.2"
 FRAME = 0.01
 SR = 16000
 SIL_FRAC = 0.2
@@ -95,7 +95,7 @@ def unit_keys(row: list, s1: dict, els: list[dict]) -> dict:
         e = els[row[3]]["id"]
         return {"S": e, "L": e, "P": e, "H": e}
     t = row[1]
-    line = s1["line"][t]
+    line = s1["line"][t] if s1["in_poem"][s1["block"][t]] else None
     return {"S": s1["sent"][t], "L": (s1["block"][t], line) if line is not None else None,
             "P": s1["block"][t], "H": "body"}
 
@@ -148,8 +148,10 @@ def boundaries(sec: dict, s1: dict, db: np.ndarray | None, thr: float, breaths: 
 
 def load_stage1(tid: str, cache: dict) -> dict:
     if tid not in cache:
-        tk = json.load(gzip.open(OUT / "stage1" / f"{tid}.json.gz", "rt"))["tokens"]
-        cache[tid] = {"sent": tk["sent"], "line": tk["line"], "block": tk["block"]}
+        d = json.load(gzip.open(OUT / "stage1" / f"{tid}.json.gz", "rt"))
+        tk = d["tokens"]
+        cache[tid] = {"sent": tk["sent"], "line": tk["line"], "block": tk["block"],
+                      "in_poem": [b.get("poem") is not None for b in d["blocks"]]}
     return cache[tid]
 
 
@@ -204,6 +206,8 @@ def pauses_job(args: tuple[dict, bool]) -> dict:
 def classify(rates: dict) -> str:
     """Boundary behaviour from pause rates (fraction of boundaries with >= PAUSE_MIN silence)."""
     s, ln = rates.get("sent_end"), rates.get("line_end_only")
+    if s is None and ln is None:
+        return "no_data"
     sp = s is not None and s >= 0.5
     if ln is None:
         return "sentences" if sp else "neither"
@@ -253,8 +257,7 @@ def write_review(out: Path, inv: list[dict]) -> None:
         rr = reading_rates(d)
         d_sum = {"version": d["version"], **rr}
         (p.parent / (d["reading_id"] + ".summary.json")).write_text(json.dumps(d_sum))
-        has_lines = rr["counts"]["line_end_only"] > 0
-        cls[(has_lines, rr["behaviour"])] += 1
+        cls[(bool(verse.get(d["reading_id"])), rr["behaviour"])] += 1
         rows.append([d["work"], d["reading_id"], verse.get(d["reading_id"]), rr["behaviour"]]
                     + [rr["counts"][k] for k in ("sent_end", "line_end_only", "word")]
                     + [rr["rates"][k] for k in ("sent_end", "line_end_only", "sent_mid_line", "block", "word")]

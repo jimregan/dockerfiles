@@ -15,7 +15,7 @@ def test_silence_in_longest_run_and_extent():
 
 
 def test_boundaries_attach_insertions_to_next_unit():
-    s1 = {"sent": [0, 0, 1, 1], "line": [None] * 4, "block": [0, 0, 0, 0]}
+    s1 = {"sent": [0, 0, 1, 1], "line": [None] * 4, "block": [0, 0, 0, 0], "in_poem": [False]}
     sec = {"elements": [],
            "ref": [["a", 0, -1, -1], ["b", 1, -1, -1], ["c", 2, -1, -1], ["d", 3, -1, -1]],
            "words": [[0, 0, "cor", 0.0, 0.2, 1], [1, 1, "cor", 0.3, 0.5, 1],
