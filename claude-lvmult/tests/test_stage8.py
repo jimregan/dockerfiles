@@ -6,7 +6,6 @@ import pytest
 
 from librivox_mult import stage8_manifests as s8
 
-lhotse = pytest.importorskip("lhotse")
 
 
 def seg(sid, unit, start, dur, rows, words, spoken=True, text="One two."):
@@ -43,6 +42,7 @@ def fixture(root: Path) -> dict:
 
 
 def test_manifests_load_in_lhotse(tmp_path, monkeypatch):
+    lhotse = pytest.importorskip("lhotse")
     monkeypatch.setattr(s8, "OUT", tmp_path)
     res = s8.process((fixture(tmp_path), False))
     assert res["n_errors"] == 0 and res["supervisions"] == {"S": 3} and res["unspoken"] == {"S": 1}
@@ -76,6 +76,7 @@ REAL = Path("/out/stage8/dracula/lv12966")
 
 @pytest.mark.skipif(not (REAL / "supervisions_S.jsonl.gz").exists(), reason="no Stage 8 output")
 def test_real_reading_loads():
+    lhotse = pytest.importorskip("lhotse")
     recs = lhotse.RecordingSet.from_file(REAL / "recordings.jsonl.gz")
     sups = lhotse.SupervisionSet.from_file(REAL / "supervisions_S.jsonl.gz")
     lhotse.validate_recordings_and_supervisions(recs, sups)
