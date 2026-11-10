@@ -81,10 +81,15 @@ services:
         VLLM_IMAGE: ${VLLM_IMAGE:-vllm/vllm-openai:v0.32.0-cu129}
     image: librivox-mult-llm:latest
     command:
-      - --model=${LLM_MODEL:-Qwen/Qwen3-8B}
+      - --model=${LLM_MODEL:-Qwen/Qwen3.5-35B-A3B-GPTQ-Int4}
       - --served-model-name=local
-      - --gpu-memory-utilization=${LLM_GPU_UTIL:-0.85}
-      - --max-model-len=${LLM_MAX_LEN:-32768}
+      # Qwen-specific: change these two when switching to Gemma
+      - --quantization=moe_wna16
+      - --reasoning-parser=qwen3
+      - --language-model-only
+      - --tensor-parallel-size=${LLM_TP:-2}
+      - --gpu-memory-utilization=${LLM_GPU_UTIL:-0.92}
+      - --max-model-len=${LLM_MAX_LEN:-16384}
     environment:
       HF_HOME: /cache/hf
       HF_HUB_OFFLINE: "1"
@@ -98,7 +103,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${LLM_GPUS:-1}"]
+              device_ids: ["${LLM_GPUS:-1}", "${LLM_GPUS_2:-2}"]   # two cards; must match LLM_TP=2
               capabilities: [gpu]
 
   fetch:
