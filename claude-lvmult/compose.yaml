@@ -84,6 +84,7 @@ services:
     environment:
       HF_HOME: /cache/hf
       HF_HUB_OFFLINE: "1"
+      NVIDIA_DISABLE_REQUIRE: "1"
     volumes:
       - hf-cache:/cache/hf
     networks: [backend]
