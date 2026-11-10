@@ -12,6 +12,9 @@ dependencies = [
     "rapidfuzz>=3.14.6",
 ]
 
+[project.optional-dependencies]
+label = ["anthropic"]
+
 [project.scripts]
 lvm-survey = "librivox_mult.stage0_survey:main"
 lvm-text = "librivox_mult.stage1_text:main"
