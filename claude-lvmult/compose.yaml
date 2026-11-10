@@ -94,6 +94,8 @@ services:
       HF_HOME: /cache/hf
       HF_HUB_OFFLINE: "1"
       NVIDIA_DISABLE_REQUIRE: "1"
+      NCCL_P2P_DISABLE: "1"
+      NCCL_DEBUG: "WARN"
     volumes:
       - hf-cache:/cache/hf
     networks: [backend]
