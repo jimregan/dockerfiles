@@ -1,0 +1,4 @@
+{
+  "_doc": "Per-text block overrides from Stage 1 review, keyed by HTML path (see /out/review/stage1/*.tsv 'html' column). Values: verse | lines | para | heading | toc | caption | footnote | separator.",
+  "_example": {"/body[1]/div[3]/p[12]": "lines"}
+}

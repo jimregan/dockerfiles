@@ -1,0 +1,136 @@
+# LibriVox multi-reading corpus: Claude Code + GPU worker (+ optional local LLM)
+#
+#   claude  - Claude Code, egress firewall (allowlist), no GPU, no Docker socket
+#   worker  - CUDA + Kaldi + Python stack; NO internet (internal network only);
+#             Claude runs jobs here with `ssh worker '...'`
+#   llm     - vLLM OpenAI-compatible server for Qwen/Gemma (profile: llm); offline
+#   fetch   - worker image WITH internet, for one-off model downloads (profile: fetch)
+#
+# All four see the same paths: /data (ro), /work (rw, this repo), /out (rw),
+# /src-projects (ro), /cache/hf (shared HF cache).
+
+name: librivox-mult
+
+secrets:
+  anthropic_pipeline_key:
+    file: ./secrets/anthropic_pipeline_key
+
+services:
+  claude:
+    build:
+      context: ./docker/claude
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
+    cap_add: [NET_ADMIN, NET_RAW]          # needed only for init-firewall.sh
+    secrets: [anthropic_pipeline_key]
+    environment:
+      DISABLE_AUTOUPDATER: "1"
+      LLM_BASE_URL: http://llm:8000/v1
+      LLM_MODEL_NAME: local
+    volumes:
+      - ${DATA_DIR:?set DATA_DIR}:/data:ro
+      - ${WORK_DIR:-.}:/work
+      - ${OUT_DIR:?set OUT_DIR}:/out
+      - ${SRC_PROJECTS_DIR:?set SRC_PROJECTS_DIR}:/src-projects:ro
+      - claude-home:/home/agent/.claude
+      - ssh-keys:/keys
+      # Read-only at /etc, but it is the same host file as the repo copy under
+      # /work: point FIREWALL_DOMAINS outside the repo if that matters to you.
+      - ${FIREWALL_DOMAINS:-./docker/claude/allowed-domains.txt}:/etc/claude-firewall/allowed-domains.txt:ro
+    networks: [backend, egress]
+    working_dir: /work
+    stdin_open: true
+    tty: true
+    depends_on: [worker]
+
+  worker:
+    image: librivox-mult-worker:latest
+    build:
+      context: ./docker/worker
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    hostname: worker
+    environment:
+      HF_HOME: /cache/hf
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${DATA_DIR}:/data:ro
+      - ${WORK_DIR:-.}:/work
+      - ${OUT_DIR}:/out
+      - ${SRC_PROJECTS_DIR}:/src-projects:ro
+      - hf-cache:/cache/hf
+      - ssh-keys:/keys:ro
+    networks: [backend]
+    shm_size: 16gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${WORKER_GPUS:-0}"]
+              capabilities: [gpu]
+
+  llm:
+    profiles: [llm]
+    build:
+      context: ./docker/llm
+      args:
+        VLLM_IMAGE: ${VLLM_IMAGE:-vllm/vllm-openai:v0.32.0-cu129}
+    image: librivox-mult-llm:latest
+    command:
+      - --model=${LLM_MODEL:-Qwen/Qwen3.5-35B-A3B-GPTQ-Int4}
+      - --served-model-name=local
+      # Qwen-specific: change these two when switching to Gemma
+      - --quantization=moe_wna16
+      - --reasoning-parser=qwen3
+      - --language-model-only
+      - --tensor-parallel-size=${LLM_TP:-2}
+      - --gpu-memory-utilization=${LLM_GPU_UTIL:-0.92}
+      - --max-model-len=${LLM_MAX_LEN:-16384}
+    environment:
+      HF_HOME: /cache/hf
+      HF_HUB_OFFLINE: "1"
+      NVIDIA_DISABLE_REQUIRE: "1"
+    volumes:
+      - hf-cache:/cache/hf
+    networks: [backend]
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${LLM_GPUS:-1}", "${LLM_GPUS_2:-2}"]   # two cards; must match LLM_TP=2
+              capabilities: [gpu]
+
+  fetch:
+    profiles: [fetch]
+    image: librivox-mult-worker:latest
+    pull_policy: never
+    build:
+      context: ./docker/worker
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    entrypoint: ["/opt/venv/bin/hf"]
+    command: ["--help"]
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HF_HOME: /cache/hf
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - hf-cache:/cache/hf
+    networks: [egress]
+
+networks:
+  backend:
+    internal: true        # no route to the internet
+  egress: {}
+
+volumes:
+  hf-cache:
+  claude-home:
+  ssh-keys:
