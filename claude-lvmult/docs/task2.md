@@ -1,4 +1,4 @@
-# Task 2: speaker attribution (draft spec, 2026-11-09; not approved)
+# Task 2: speaker attribution (draft spec, 2026-11-09; labelling plan decided 2026-11-10)
 
 ## What the data looks like (survey 2026-11-09)
 
@@ -53,3 +53,21 @@ Anne of Green Gables (lv5009) and Oliver Twist (lv10387), three chapters each:
 - Do the audio switch points separate cleanly?
 - How accurate are rule and LLM attribution, against a small hand-checked set or a
   Claude-labelled one (to be costed and approved first)?
+
+## Claude-labelled reference set (proposal, awaiting approval)
+
+- **Model and mode:** `claude-opus-5-5` through the Batch API (50% off: $2 in / $10 out per
+  MTok), with the instructions and cast list cached.
+- **One request per chapter:** chapter text with the quotes numbered, plus the cast list.
+  The answer is JSON giving each quote its character, with evidence.
+- **Pilot size:** 6 chapters, 332 quotes. About 30 k input and 40 k output tokens including
+  thinking, so **about $0.50**. Three repeat runs to measure label stability: about $1.50.
+- **Optional larger reference:** 2 chapters from each of the other 18 dramatic readings
+  (about 2,500 quotes): about $5.
+- **Full run (all dramatic texts, 2026-11-10):** 19 Gutenberg texts (pg514 has two
+  readings), 9.4 M chars, 34,212 top-level quotes, about 650 chapters. About 2.6 M input
+  tokens ($5) and 4 M output at about 120 tokens per quote including thinking ($41): **about
+  $45** (range $25–75 depending on thinking length). Three repeats: about $135.
+- **Decided 2026-11-10:** one Claude pass plus two local-model passes, instead of three Claude repeats.
+- **Reuse:** labels belong to the text, so they carry over to every reading of the same
+  Gutenberg text (pg45 has several Anne of Green Gables readings).
