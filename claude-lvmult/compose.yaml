@@ -110,11 +110,6 @@ services:
     profiles: [fetch]
     image: librivox-mult-worker:latest
     pull_policy: never
-    build:
-      context: ./docker/worker
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
     entrypoint: ["/opt/venv/bin/hf"]
     command: ["--help"]
     user: "${UID:-1000}:${GID:-1000}"
