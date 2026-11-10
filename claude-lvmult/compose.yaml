@@ -11,6 +11,10 @@
 
 name: librivox-mult
 
+secrets:
+  anthropic_pipeline_key:
+    file: ./secrets/anthropic_pipeline_key
+
 services:
   claude:
     build:
@@ -20,8 +24,8 @@ services:
         GID: ${GID:-1000}
         CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
     cap_add: [NET_ADMIN, NET_RAW]          # needed only for init-firewall.sh
+    secrets: [anthropic_pipeline_key]
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
       DISABLE_AUTOUPDATER: "1"
       LLM_BASE_URL: http://llm:8000/v1
       LLM_MODEL_NAME: local
@@ -42,6 +46,7 @@ services:
     depends_on: [worker]
 
   worker:
+    image: librivox-mult-worker:latest
     build:
       context: ./docker/worker
       args:
@@ -93,6 +98,8 @@ services:
 
   fetch:
     profiles: [fetch]
+    image: librivox-mult-worker:latest
+    pull_policy: never
     build:
       context: ./docker/worker
       args:
