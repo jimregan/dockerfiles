@@ -71,3 +71,10 @@ Anne of Green Gables (lv5009) and Oliver Twist (lv10387), three chapters each:
 - **Decided 2026-11-10:** one Claude pass plus two local-model passes, instead of three Claude repeats.
 - **Reuse:** labels belong to the text, so they carry over to every reading of the same
   Gutenberg text (pg45 has several Anne of Green Gables readings).
+
+## Voice-style notes (Jim, 2026-11-10)
+
+Dramatic readers put on character voices, which matters for speaker modelling. Proposed:
+`custom.turns[].voice_style`, a list of multi-label tags with every applicable tag expanded
+(e.g. `acted, over-acted, hammy, RP, posh, English accent`). Hand notes so far:
+`/out/review/task2/voice_notes.tsv`. The tag set isn't fixed yet.

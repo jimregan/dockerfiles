@@ -59,3 +59,7 @@
 - 2026-11-10: Task 2 labels: one pass with Claude (Opus 5.5, Batch API, about $45 for all dramatic texts) and two passes with local models (agreement = label stability). Chapter-0 casts are fixed by hand from /out/review/task2/chapter0.tsv.
 - 2026-11-10: The Anthropic API key is read from a file by task2_label.py (--api-key-file); ANTHROPIC_API_KEY is never set, so nothing else bills to the API.
 - 2026-11-10: anthropic SDK is an optional extra (label), used only by task2_label.py; requests are one per Stage 1 division (labels belong to the text).
+- 2026-11-10 (Jim, hand check): quoted material that is NOT_SPEECH may still be read in a different voice by the narrator; keep NOT_SPEECH as a text label and let the audio decide the voice.
+- 2026-11-10 (Jim): collective pseudo-characters (Oliver d004 Q64–65, "the board") can have their own reader in a dramatic reading. Label them OTHER with that name rather than NOT_SPEECH; hand checks mark these 'potential'.
+- 2026-11-10 (Jim): voice-style tags (acted, gruff, hammy, RP, posh, accent…) are multi-label with all applicable tags expanded; proposed as custom.turns[].voice_style.
+- 2026-11-10 (Jim): in voice notes, "acted" means over-acted (plain acting is not worth noting); the tag is over-acted.
