@@ -2,3 +2,10 @@
 /mocapsmplx/data
 /robospatial/models--meta-llama--Meta-Llama-3-8B-Instruct
 *.iso
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+/out/
+secrets/

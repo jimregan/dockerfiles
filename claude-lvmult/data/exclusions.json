@@ -1,0 +1,15 @@
+{
+  "_doc": "Audio excluded from the corpus. files: path relative to /data. readings: whole readings by reading_id. Each with the reason and who decided. Stage 0 marks the sections `excluded`; later stages skip them.",
+  "files": {
+    "shakespeares-sonnets/sonnets-by-william-shakespeare/sonnets_17_shakespeare.mp3": "junk audio; wav2vec2 output is gibberish (Jim, 2026-11-06)",
+    "shakespeares-sonnets/sonnets-by-william-shakespeare/sonnets_16_shakespeare.mp3": "junk audio; wav2vec2 output is gibberish (Jim, 2026-11-06)",
+    "hans-christian-andersen-fairy-tale-collection/hans-christian-andersen-fairy-tale-collection-by-hans-christian-andersen/andersen_02_thetinderbox_mme.mp3": "listed source is books.google.com: skipped (Jim, 2026-11-06)",
+    "hans-christian-andersen-fairy-tale-collection/hans-christian-andersen-fairy-tale-collection-by-hans-christian-andersen/andersen_13_greatclausandlittleclaus_mme.mp3": "listed source is books.google.com: skipped (Jim, 2026-11-06)",
+    "hans-christian-andersen-fairy-tale-collection/hans-christian-andersen-fairy-tale-collection-by-hans-christian-andersen/andersen_19_thebelldeep_mme.mp3": "listed source is books.google.com: skipped (Jim, 2026-11-06)"
+  },
+  "readings": {
+    "lv9461": "A Christmas Carol, condensed by the author: no source text (Jim, 2026-11-06)",
+    "lv9600": "listed source is archive.org: skipped (Jim, 2026-11-06)",
+    "lv19037": "listed source is archive.org: skipped (Jim, 2026-11-06)"
+  }
+}
